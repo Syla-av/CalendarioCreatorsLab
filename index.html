@@ -408,10 +408,15 @@ async function saveParticipationToSupabase(data) {
     }
     
     // Manejar respuesta vacía (return=minimal devuelve vacío)
-    const text = await response.text();
-    const result = text ? JSON.parse(text) : null;
-    console.log('Participación guardada en Supabase:', result);
-    return { isOk: true, data: result };
+    try {
+      const text = await response.text();
+      const result = text ? JSON.parse(text) : null;
+      console.log('Participación guardada en Supabase:', result);
+      return { isOk: true, data: result };
+    } catch (jsonError) {
+      console.log('Respuesta vacía de Supabase (éxito)');
+      return { isOk: true, data: null };
+    }
     
   } catch (error) {
     console.error('Error guardando participación en Supabase:', error);
