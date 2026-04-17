@@ -536,18 +536,98 @@ function closeParticipationForm() {
   document.getElementById('participationModal').classList.remove('active');
 }
 
-// Get user's country from geolocation API
-async function getUserCountry() {
+// Función para detectar país automáticamente (con fallback por IP)
+async function detectCountry() {
+  // Primero intentar por navegador
+  const lang = navigator.language || navigator.userLanguage || 'es-MX';
+  const countryMap = {
+    // Español por país
+    'es-MX': 'México',
+    'es-AR': 'Argentina',
+    'es-CO': 'Colombia', 
+    'es-PE': 'Perú',
+    'es-CL': 'Chile',
+    'es-EC': 'Ecuador',
+    'es-UY': 'Uruguay',
+    'es-PY': 'Paraguay',
+    'es-BO': 'Bolivia',
+    'es-VE': 'Venezuela',
+    'es-CR': 'Costa Rica',
+    'es-PA': 'Panamá',
+    'es-GT': 'Guatemala',
+    'es-SV': 'El Salvador',
+    'es-HN': 'Honduras',
+    'es-NI': 'Nicaragua',
+    'es-DO': 'República Dominicana',
+    'es-ES': 'España',
+    // Español genérico (Estados Unidos y otros)
+    'es-US': 'Estados Unidos',
+    'es-419': 'Estados Unidos', // Firefox sometimes uses this
+    'es': 'Estados Unidos', // Spanish without country code
+    // Inglés por país
+    'en-US': 'Estados Unidos',
+    'en-CA': 'Canadá',
+    'en-GB': 'Reino Unido',
+    'en-AU': 'Australia',
+    'en-NZ': 'Nueva Zelanda',
+    // Portugués
+    'pt-BR': 'Brasil',
+    'pt-PT': 'Portugal',
+    'pt-AO': 'Angola',
+    // Francés
+    'fr-FR': 'Francia',
+    'fr-CA': 'Canadá (francés)',
+    'fr-BE': 'Bélgica',
+    'fr-CH': 'Suiza',
+    // Otros idiomas comunes
+    'it-IT': 'Italia',
+    'de-DE': 'Alemania',
+    'de-AT': 'Austria',
+    'de-CH': 'Suiza (alemán)',
+    'ja-JP': 'Japón',
+    'zh-CN': 'China',
+    'zh-TW': 'Taiwán',
+    'ko-KR': 'Corea del Sur',
+    'ru-RU': 'Rusia',
+    'ar-SA': 'Arabia Saudita',
+    'hi-IN': 'India',
+    'th-TH': 'Tailandia',
+    'vi-VN': 'Vietnam',
+    'id-ID': 'Indonesia',
+    'ms-MY': 'Malasia',
+    'tl-PH': 'Filipinas',
+    'el-GR': 'Grecia',
+    'tr-TR': 'Turquía',
+    'pl-PL': 'Polonia',
+    'nl-NL': 'Países Bajos',
+    'sv-SE': 'Suecia',
+    'no-NO': 'Noruega',
+    'da-DK': 'Dinamarca',
+    'fi-FI': 'Finlandia'
+  };
+  
+  const detectedByBrowser = countryMap[lang];
+  if (detectedByBrowser) {
+    console.log('País detectado por navegador:', detectedByBrowser);
+    return detectedByBrowser;
+  }
+  
+  // Si no funciona por navegador, intentar por IP
   try {
+    console.log('Intentando detección por IP...');
     const response = await fetch('https://ipapi.co/json/');
     if (response.ok) {
       const data = await response.json();
-      return data.country_name || 'Desconocido';
+      const detectedByIP = data.country_name || 'México';
+      console.log('País detectado por IP:', detectedByIP);
+      return detectedByIP;
     }
-  } catch (e) {
-    console.error('Error fetching country:', e);
+  } catch (error) {
+    console.error('Error en detección por IP:', error);
   }
-  return 'Desconocido';
+  
+  console.log('Usando país por defecto: México');
+  return 'México'; // Default final
 }
 
 // Convert UTC to Mexico City time (CST/CDT)
