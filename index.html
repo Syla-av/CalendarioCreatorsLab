@@ -7,9 +7,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="/_sdk/element_sdk.js"></script>
-  <script src="https://apis.google.com/js/api.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
   <style>
 html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
@@ -364,149 +362,65 @@ html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
     </div>
    </div>
    <script>
-// ===== GOOGLE SHEETS CONFIGURATION =====
-const SHEET_ID = '1cfLa-mtAy1sqlnN4j0EgYfUd4BbtFsGZcNC_JcS4hCc'; // Reemplaza con tu Sheet ID
-const CLIENT_ID = '266598618088-822rhm8m1tmbqlpb08c177qhula6fh3c.apps.googleusercontent.com'; // Reemplaza con tu Client ID de OAuth 2.0
-const API_KEY = 'AIzaSyCYwqdFb-9qMWb2z405u0X7wactCJAruqk';   // Reemplaza con tu API Key
-const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-const EVENTS_RANGE = 'Eventos!A2:L'; // Hoja "Eventos" desde fila 2
-const PARTICIPATIONS_RANGE = 'Participaciones!A2:G'; // Hoja "Participaciones" desde fila 2
-
-let tokenClient;
-let gapiInited = false;
-let gisInited = false;
+// ===== SUPABASE CONFIGURATION =====
+const SUPABASE_URL = 'https://emvvssrbuuralgooajpb.supabase.co'; // Project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtdnZzc3JidXVyYWxnb29hanBiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0NDE1ODYsImV4cCI6MjA1MjAxNzU4Nn0.7jHzzuoJqx6CoQouyhVNQPhZ-9HqBhF50gq7fOvnEq0'; // Anon public key
 
 // ===== DATA =====
 let events = []; // Se cargará desde Google Sheets
 
-// ===== GOOGLE SHEETS FUNCTIONS =====
-function gapiLoaded() {
-  gapi.load('client', () => {
-    initializeGapiClient();
-  });
-}
-
-async function initializeGapiClient() {
-  gapi.client.init({
-    apiKey: API_KEY,
-    discoveryDocs: [DISCOVERY_DOC],
-  }).then(() => {
-    gapiInited = true;
-    console.log('Google Sheets API inicializada');
-    loadEventsFromSheets();
-  }).catch(error => {
-    console.error('Error inicializando Google Sheets API:', error);
-    loadFallbackEvents();
-  });
-}
-
-function gisLoaded() {
-  if (typeof google !== 'undefined' && google.accounts) {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: '', // defined later
-    });
-    gisInited = true;
-    console.log('Google Identity Services inicializado');
-  } else {
-    console.error('Google Identity Services no está disponible');
-    gisInited = false;
-  }
-}
-
-async function loadEventsFromSheets() {
+// ===== SUPABASE FUNCTIONS =====
+async function loadEventsFromSupabase() {
   try {
-    const response = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID,
-      range: EVENTS_RANGE,
-    });
-    
-    const rows = response.result.values;
-    if (rows && rows.length > 0) {
-      events = rows.map(row => ({
-        type: row[0] || '',
-        title: row[1] || '',
-        date: row[2] || '',
-        startTime: row[3] || '',
-        endTime: row[4] || '',
-        speaker: row[5] || '',
-        description: row[6] || '',
-        zoomLink: row[7] || '',
-        portadaLink: row[8] || '',
-        unlockTime: row[9] || null,
-        locked: row[10] === 'true',
-        emoji: row[11] || ''
-      }));
-      
-      console.log('Eventos cargados desde Google Sheets:', events.length);
-      renderCalendar();
-      updateCountdowns();
-    } else {
-      console.log('No hay eventos en Google Sheets, usando fallback');
-      loadFallbackEvents();
-    }
+    // Por ahora, usar datos de fallback hasta que cargues eventos en Supabase
+    console.log('Usando eventos de fallback (configura Supabase para eventos dinámicos)');
+    loadFallbackEvents();
   } catch (error) {
-    console.error('Error cargando eventos desde Google Sheets:', error);
+    console.error('Error cargando eventos desde Supabase:', error);
     loadFallbackEvents();
   }
 }
 
-async function saveParticipationToSheets(data) {
+async function saveParticipationToSupabase(data) {
   try {
-    console.log('Intentando guardar participación:', data);
+    console.log('Guardando participación en Supabase:', data);
     
-    // Si Google Sheets no está completamente inicializado, simular guardado
-    if (!gapiInited || !gisInited) {
-      console.log('Google Sheets no está completamente inicializado, guardando localmente');
-      console.log('Datos de participación:', data);
-      return { isOk: true };
-    }
-
-    // Solicitar token si no existe y Google Identity está disponible
-    if (tokenClient && gapi.auth && !gapi.auth.getToken()) {
-      console.log('Solicitando token de acceso...');
-      await new Promise((resolve, reject) => {
-        tokenClient.callback = (response) => {
-          if (response.error) {
-            reject(response.error);
-          } else {
-            resolve(response);
-          }
-        };
-        tokenClient.requestAccessToken();
-      });
-    }
-
-    const values = [
-      [
-        data.student_name,
-        data.challenge_title,
-        data.challenge_date,
-        data.submission_url,
-        data.participation_date,
-        data.country,
-        data.mexico_time
-      ]
-    ];
-    
-    const response = await gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range: PARTICIPATIONS_RANGE,
-      valueInputOption: 'USER_ENTERED',
-      resource: {
-        values: values
-      }
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/participaciones`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        student_name: data.student_name,
+        challenge_title: data.challenge_title,
+        challenge_date: data.challenge_date,
+        submission_url: data.submission_url,
+        participation_date: data.participation_date,
+        country: data.country,
+        mexico_time: data.mexico_time
+      })
     });
     
-    console.log('Participación guardada en Google Sheets:', response);
-    return { isOk: true };
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('Participación guardada en Supabase:', result);
+    return { isOk: true, data: result };
+    
   } catch (error) {
-    console.error('Error guardando participación:', error);
-    console.log('Datos guardados localmente (simulación):', data);
-    return { isOk: true }; // Simular éxito para buena experiencia del usuario
+    console.error('Error guardando participación en Supabase:', error);
+    return { isOk: false, error: { message: error.message } };
   }
+}
+
+// Inicialización simple
+function initializeSupabase() {
+  console.log('Supabase inicializado');
+  loadEventsFromSupabase();
 }
 
 function loadFallbackEvents() {
@@ -672,7 +586,7 @@ async function submitParticipation() {
     submitBtn.style.opacity = '0.6';
     
     // Get country and Mexico City time
-    const country = await getUserCountry();
+    const country = detectCountry();
     const mexicoTime = getTimeInMexicoCity();
     
     const participationData = {
@@ -685,7 +599,7 @@ async function submitParticipation() {
       mexico_time: mexicoTime
     };
     
-    const result = await saveParticipationToSheets(participationData);
+    const result = await saveParticipationToSupabase(participationData);
 
     if (result.isOk) {
       showNotification('¡Participación registrada exitosamente!');
@@ -1529,24 +1443,13 @@ const defaultConfig = {
   font_size: 16
 };
 
-// ===== GOOGLE SHEETS INITIALIZATION =====
-// Initialize Google Sheets API when page loads
+// ===== SUPABASE INITIALIZATION =====
+// Initialize Supabase when page loads
 document.addEventListener('DOMContentLoaded', function() {
-  // Esperar a que los scripts de Google carguen
+  // Inicializar Supabase
   setTimeout(() => {
-    if (typeof gapi !== 'undefined') {
-      gapiLoaded();
-    } else {
-      console.error('Google API script no cargado');
-      loadFallbackEvents();
-    }
-    
-    if (typeof google !== 'undefined' && google.accounts) {
-      gisLoaded();
-    } else {
-      console.error('Google Identity script no cargado');
-    }
-  }, 2000); // Aumentar tiempo de espera
+    initializeSupabase();
+  }, 1000);
 });
 
 function applyConfig(config) {
