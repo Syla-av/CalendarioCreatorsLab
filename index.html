@@ -344,9 +344,6 @@ html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
        <label for="studentName" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Tu nombre</label> <input type="text" id="studentName" placeholder="Ej: Juan Pérez" style="width:100%;padding:12px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);font-size:14px;font-family:inherit;">
       </div>
       <div id="challengeInfo" style="padding:12px;border-radius:8px;background:rgba(180,142,255,0.08);border:1px solid rgba(180,142,255,0.2);">
-       <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">
-        RETO:
-       </div>
        <div id="participationChallengeName" style="font-size:14px;font-weight:600;color:var(--lila);"></div>
       </div>
       <div>
@@ -453,11 +450,11 @@ function loadFallbackEvents() {
   // Datos de fallback si Google Sheets falla
   events = [
     { type:"class", title:"Viczael - Cómo crear tu primer curso digital", date:"2026-04-09", startTime:"19:00", endTime:"20:30", speaker:"Viczael", description:"Aprende cómo crear y lanzar tu primer curso digital exitoso.", zoomLink:"https://us06web.zoom.us/j/89755709944?pwd=betjwyemd09CKaMqfbxa1OTiSeHatq.1", portadaLink:"https://drive.google.com/thumbnail?id=1UTSR7ewbBgF9E6T5kEcBZmSidgz4tCXr&sz=w1000", unlockTime:null, locked:false, emoji:"" },
-    { type:"class", title:"Cristian - Cómo vender más con Facebook Ads", date:"2026-04-16", startTime:"19:00", endTime:"20:30", speaker:"Cristian", description:"Domina Facebook Ads y aumenta tus ventas de forma exponencial.", zoomLink:"https://us06web.zoom.us/j/81303959763?pwd=EKh2TFp9KwKoElijYYaisl2rG1Q02A.1", portadaLink:"https://drive.google.com/thumbnail?id=1HLfDrjh_K6CGIWQpHRUx4Yt5c5TYYg3S&sz=w1000", unlockTime:null, locked:false, emoji:"" },
     { type:"class", title:"Melissa Arria - Cómo crear y vender un Ebook", date:"2026-04-28", startTime:"19:00", endTime:"20:30", speaker:"Melissa Arria", description:"Los pasos clave para crear, publicar y vender tu ebook de forma profesional.", zoomLink:"https://us06web.zoom.us/j/88524274466?pwd=qxdpqh7l2JSIZCzGzlpJCx5JEnMLMz.1", portadaLink:"https://drive.google.com/thumbnail?id=1z8ucPG-A_RspZ-gwQGrPDlBZAZ27hJ8L&sz=w1000", unlockTime:null, locked:false, emoji:"" },
     { type:"class", title:"Fer Anzures - Cómo empezar a ser speaker", date:"2026-04-30", startTime:"19:00", endTime:"20:30", speaker:"Fer Anzures", description:"Descubre cómo posicionarte como speaker y monetizar tu conocimiento.", zoomLink:"https://us06web.zoom.us/j/85767507803?pwd=Nf9Kc2A52vzIivu9rxsUszvX1rIHLd.1", portadaLink:"https://drive.google.com/thumbnail?id=1XI6yEniXhU5A20XGCd-3R6PtbSF3kbPj&sz=w1000", unlockTime:null, locked:false, emoji:"" },
     { type:"challenge", title:"Reto #1 - Comparte una foto", date:"2026-04-07", unlockTime:null, locked:false, description:"Reto finalizado", emoji:"" },
-    { type:"challenge", title:"Reto #2", date:"2026-04-16", unlockTime:null, locked:false, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
+    { type:"challenge", title:"reto #a", date:"2026-04-16", unlockTime:null, locked:false, description:"Reto finalizado ¡Gracias por participar!", emoji:"" },
+    { type:"challenge", title:"Reto #2", date:"2026-04-17", unlockTime:null, locked:false, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
     { type:"challenge", title:"Reto #3", date:"2026-04-22", unlockTime:null, locked:true, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
     { type:"challenge", title:"Reto #4", date:"2026-04-27", unlockTime:null, locked:true, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" }
   ];
@@ -550,7 +547,20 @@ function closeCongratulationsModal() {
 }
 
 function openParticipationForm(challengeTitle, challengeDate) {
-  document.getElementById('participationChallengeName').textContent = challengeTitle;
+  // Verificar si el reto está activo
+  const nowUser = new Date();
+  const [eYear, eMonth, eDay] = challengeDate.split('-').map(Number);
+  const challengeStart = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+  const challengeEnd = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day
+  const isActive = nowUser >= challengeStart && nowUser <= challengeEnd;
+  
+  // Mostrar mensaje diferente si el reto está activo
+  if (isActive) {
+    document.getElementById('participationChallengeName').textContent = 'Reto en curso ¡Queremos ver tu participación!';
+  } else {
+    document.getElementById('participationChallengeName').textContent = challengeTitle;
+  }
+  
   document.getElementById('studentName').value = '';
   document.getElementById('submissionUrl').value = '';
   window.currentChallenge = { title: challengeTitle, date: challengeDate };
@@ -1081,7 +1091,7 @@ function openModal(evts) {
           <span style="font-size:14px;">${ev.emoji}</span>
           <span style="font-size:15px;font-weight:600;">${ev.title}</span>
         </div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.7);white-space:pre-wrap;line-height:1.5;flex:1;">${ev.description}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);white-space:pre-wrap;line-height:1.5;flex:1;">${hasExpired ? 'Reto finalizado ¡Gracias por participar!' : (isActive ? 'Reto en curso ¡Queremos ver tu participación!' : ev.description)}</div>
         <div style="margin-top:10px;display:flex;justify-content:flex-end;margin-bottom:10px;">
           <span style="font-size:10px;padding:4px 8px;border-radius:6px;background:${statusColor};color:white;font-weight:700;">${statusBadge}</span>
         </div>
@@ -1194,8 +1204,8 @@ function renderUpcoming() {
     const endDate = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
     const chDay = formatDateLocal(activeChallenge.date);
     
-    chnEl.textContent = activeChallenge.title;
-    chsEl.textContent = `En curso: ${chDay}`;
+    chnEl.textContent = '';
+    chsEl.textContent = 'Reto en curso ¡Queremos ver tu participación!';
     const diff = endDate - nowUser;
     const html = buildCountdownHTML(diff);
     chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Finaliza pronto!</div>';
@@ -1368,6 +1378,7 @@ function buildCountdownHTML(diff) {
 function updateCountdowns() {
   const nowUser = new Date();
 
+  // Update class countdown
   let nextClass = null, nextClassDiff = Infinity;
   events.filter(e => e.type === 'class').forEach(e => {
     const d = parseLocalDateTime(e.date, e.startTime);
@@ -1385,45 +1396,58 @@ function updateCountdowns() {
     ccEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Sin clases programadas</div>';
   }
 
-  // Find active challenge
-  let activeChallenge = null;
+  // Find ALL active challenges
+  const activeChallenges = [];
   events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
     const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
     const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
     const endDate = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day
     
     if (nowUser >= startDate && nowUser <= endDate) {
-      activeChallenge = e;
+      activeChallenges.push({
+        ...e,
+        endDate: endDate,
+        timeRemaining: endDate - nowUser
+      });
     }
   });
-  
-  // Find next challenge (first unlocked challenge after now)
+
+  // Find next challenge (only if no active challenges)
   let nextChallenge = null, nextChallengeDiff = Infinity;
-  events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
-    const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
-    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
-    const diff = startDate - nowUser;
-    if (diff > 0 && diff < nextChallengeDiff) {
-      nextChallengeDiff = diff;
-      nextChallenge = e;
-    }
-  });
-  
+  if (activeChallenges.length === 0) {
+    events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
+      const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
+      const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+      const diff = startDate - nowUser;
+      if (diff > 0 && diff < nextChallengeDiff) {
+        nextChallengeDiff = diff;
+        nextChallenge = e;
+      }
+    });
+  }
+
   const chcEl = document.getElementById('challengeCountdown');
   const chnEl = document.getElementById('challengeName');
   const chsEl = document.getElementById('challengeStatus');
-  
-  if (activeChallenge) {
-    const [eYear, eMonth, eDay] = activeChallenge.date.split('-').map(Number);
-    const endDate = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
-    const chDay = formatDateLocal(activeChallenge.date);
+
+  if (activeChallenges.length > 0) {
+    // Show active challenges countdowns
+    let countdownsHTML = '';
+    activeChallenges.forEach((challenge, index) => {
+      const html = buildCountdownHTML(challenge.timeRemaining);
+      countdownsHTML += `<div style="margin-bottom: ${index < activeChallenges.length - 1 ? '8px' : '0'};">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">${challenge.title} - Finaliza en:</div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+          ${html || '<div style="font-size:12px;color:var(--amarillo);">¡Finaliza pronto!</div>'}
+        </div>
+      </div>`;
+    });
     
-    chnEl.textContent = activeChallenge.title;
-    chsEl.textContent = `En curso: ${chDay}`;
-    const diff = endDate - nowUser;
-    const html = buildCountdownHTML(diff);
-    chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Finaliza pronto!</div>';
+    chnEl.textContent = '';
+    chsEl.textContent = activeChallenges.length === 1 ? 'Reto en curso ¡Queremos ver tu participación!' : `${activeChallenges.length} retos en curso`;
+    chcEl.innerHTML = countdownsHTML;
   } else if (nextChallenge) {
+    // Show next challenge countdown
     const nextChDay = formatDateLocal(nextChallenge.date);
     
     chnEl.textContent = nextChallenge.title;
