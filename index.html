@@ -1,0 +1,1580 @@
+<!doctype html>
+<html lang="es" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academia Calendar</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+  <style>
+html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
+* { box-sizing: border-box; }
+
+:root {
+  --bg-main: #0f0e1d;
+  --bg-card: rgba(99,102,241,0.08);
+  --lila: #818cf8;
+  --morado: #6366f1;
+  --amarillo: #f97316;
+  --fucsia: #ec4899;
+  --white: #f5f3ff;
+  --text-dim: rgba(255,255,255,0.55);
+}
+
+.app-wrapper {
+  background: var(--bg-main);
+  background-image:
+    radial-gradient(ellipse at 10% 20%, rgba(108,92,231,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(180,142,255,0.1) 0%, transparent 50%);
+  color: var(--white);
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(180,142,255,0.25);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 0 20px rgba(180,142,255,0.1), inset 0 0 20px rgba(180,142,255,0.05), 0 0 30px rgba(180,142,255,0.3);
+}
+
+.glass-card-sm {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(180,142,255,0.15);
+  border-radius: 12px;
+  box-shadow: 0 0 12px rgba(180,142,255,0.08);
+}
+
+.day-cell {
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 2px;
+}
+.day-cell:hover { background: rgba(255,255,255,0.08); transform: scale(1.05); }
+.day-cell.today { box-shadow: 0 0 0 2px var(--lila); }
+.day-cell.has-event { cursor: pointer; }
+.day-cell.has-class { background: rgba(180,142,255,0.15) !important; }
+.day-cell.has-challenge { background: rgba(255,87,87,0.15) !important; }
+
+.tag {
+  font-size: 7px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  line-height: 1.3;
+  margin-top: 1px;
+}
+.tag-class { background: var(--lila); color: #1a0033; }
+.tag-start { background: var(--morado); color: white; }
+.tag-end { background: var(--amarillo); color: #1a0033; }
+.tag-active { background: var(--fucsia); color: white; opacity: 0.7; }
+.tag-challenge { background: var(--fucsia); color: white; }
+.tag-challenge-white { background: white; color: #e91e63; font-weight: 700; }
+.tag-locked { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); }
+
+.stat-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px;
+  padding: 16px;
+  transition: all 0.25s;
+}
+.stat-card:hover { background: rgba(255,255,255,0.09); transform: translateY(-2px); }
+
+.countdown-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nav-btn {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  transition: all 0.2s;
+  cursor: pointer; color: var(--white);
+}
+.nav-btn:hover { background: rgba(255,255,255,0.15); }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 50; opacity: 0; pointer-events: none;
+  transition: opacity 0.25s;
+}
+.modal-overlay.active { opacity: 1; pointer-events: all; }
+
+.modal-content {
+  background: #1a0040;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 420px; width: 90%;
+  transform: scale(0.95); transition: transform 0.25s;
+}
+.modal-overlay.active .modal-content { transform: scale(1); }
+
+.weekday-header {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 8px 0;
+}
+
+.schedule-item {
+  background: rgba(180,142,255,0.08);
+  border: 1px solid rgba(180,142,255,0.2);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s;
+}
+
+.schedule-item:hover {
+  background: rgba(180,142,255,0.12);
+  border-color: rgba(180,142,255,0.4);
+}
+
+.delete-btn {
+  background: rgba(255,87,87,0.1);
+  border: 1px solid rgba(255,87,87,0.3);
+  color: #ff5757;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background: rgba(255,87,87,0.2);
+  border-color: rgba(255,87,87,0.5);
+}
+
+@media (max-width: 900px) {
+  .main-layout { flex-direction: column !important; }
+  .left-panel, .right-panel { width: 100% !important; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+</style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full">
+  <div class="app-wrapper" id="appWrapper">
+   <div style="padding: 24px; max-width: 1400px; margin: 0 auto; height: 100%;"><!-- Header -->
+    <header style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+     <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--morado),var(--lila));display:flex;align-items:center;justify-content:center;"><i data-lucide="graduation-cap" style="width:22px;height:22px;color:white;"></i>
+      </div>
+      <div>
+       <h1 id="academyName" style="font-size:20px;font-weight:700;margin:0;line-height:1.2;">Calendario Creators Lab</h1>
+       <p id="dashboardTitle" style="font-size:12px;color:var(--text-dim);margin:0;">Boost Academy</p>
+      </div>
+     </div><button id="schedule-btn" onclick="openScheduleModal()" class="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-white text-sm transition-all hover:scale-105" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4); border: none; cursor: pointer; display: flex; align-items: center; gap: 8px;"> <i data-lucide="calendar-plus" style="width:18px;height:18px;"></i> <span>Planifica tus sesiones</span> </button>
+    </header><!-- Main Layout -->
+    <div class="main-layout" style="display:flex;gap:20px;height:calc(100% - 80px);"><!-- Left Panel: Calendar -->
+     <div class="left-panel" style="width:70%;display:flex;flex-direction:column;">
+      <div class="glass-card" style="padding:24px;flex:1;display:flex;flex-direction:column;"><!-- Month Nav -->
+       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;"><button class="nav-btn" onclick="changeMonth(-1)"><i data-lucide="chevron-left" style="width:18px;height:18px;"></i></button>
+        <h2 id="monthLabel" style="font-size:22px;font-weight:700;margin:0;"></h2><button class="nav-btn" onclick="changeMonth(1)"><i data-lucide="chevron-right" style="width:18px;height:18px;"></i></button>
+       </div><!-- Weekday Headers -->
+       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+        <div class="weekday-header">
+         Lun
+        </div>
+        <div class="weekday-header">
+         Mar
+        </div>
+        <div class="weekday-header">
+         Mié
+        </div>
+        <div class="weekday-header">
+         Jue
+        </div>
+        <div class="weekday-header">
+         Vie
+        </div>
+        <div class="weekday-header">
+         Sáb
+        </div>
+        <div class="weekday-header">
+         Dom
+        </div>
+       </div><!-- Calendar Grid -->
+       <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;flex:1;align-content:start;margin-top:4px;"></div>
+      </div>
+     </div><!-- Right Panel: Dashboard -->
+     <div class="right-panel" style="width:30%;display:flex;flex-direction:column;gap:14px;overflow:auto;"><!-- Countdown: Next Class -->
+      <div class="glass-card" style="padding:18px;">
+       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><i data-lucide="clock" style="width:16px;height:16px;color:var(--lila);"></i> <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);">Próxima Clase</span>
+       </div>
+       <div id="nextClassName" style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--lila);"></div>
+       <div id="classCountdown" style="display:flex;gap:10px;justify-content:center;"></div>
+      </div><!-- Countdown: Challenge -->
+      <div class="glass-card" style="padding:18px;">
+       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><i data-lucide="flame" style="width:16px;height:16px;color:var(--amarillo);"></i> <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);">Reto en Curso</span>
+       </div>
+       <div id="challengeStatus" style="font-size:12px;color:var(--fucsia);margin-bottom:4px;"></div>
+       <div id="challengeName" style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--amarillo);"></div>
+       <div id="challengeCountdown" style="display:flex;gap:10px;justify-content:center;"></div>
+      </div><!-- Stats -->
+      <div class="stat-card" style="display:flex;align-items:center;gap:12px;">
+       <div style="width:40px;height:40px;border-radius:10px;background:rgba(180,142,255,0.15);display:flex;align-items:center;justify-content:center;"><i data-lucide="calendar-days" style="width:20px;height:20px;color:var(--lila);"></i>
+       </div>
+       <div>
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">
+         Actividades
+        </div>
+        <div id="statTotal" style="font-size:24px;font-weight:700;">
+         0
+        </div>
+       </div>
+      </div>
+      <div class="stat-card" style="display:flex;align-items:center;gap:12px;">
+       <div style="width:40px;height:40px;border-radius:10px;background:rgba(180,142,255,0.15);display:flex;align-items:center;justify-content:center;"><i data-lucide="book-open" style="width:20px;height:20px;color:var(--lila);"></i>
+       </div>
+       <div>
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">
+         Clases
+        </div>
+        <div id="statClasses" style="font-size:24px;font-weight:700;">
+         0
+        </div>
+       </div>
+      </div>
+      <div class="stat-card" style="display:flex;align-items:center;gap:12px;">
+       <div style="width:40px;height:40px;border-radius:10px;background:rgba(255,169,77,0.15);display:flex;align-items:center;justify-content:center;"><i data-lucide="trophy" style="width:20px;height:20px;color:var(--amarillo);"></i>
+       </div>
+       <div>
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">
+         Retos
+        </div>
+        <div id="statChallenges" style="font-size:24px;font-weight:700;">
+         0
+        </div>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div><!-- Modal -->
+   <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+    <div class="modal-content">
+     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <h3 id="modalTitle" style="font-size:18px;font-weight:700;margin:0;"></h3><button onclick="closeModal()" style="background:none;border:none;color:var(--white);cursor:pointer;padding:4px;"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+     </div>
+     <div id="modalBody"></div>
+    </div>
+   </div><!-- Schedule Modal -->
+   <div class="modal-overlay" id="scheduleModal" onclick="if(event.target===this)closeScheduleModal()">
+    <div class="modal-content" style="max-width: 600px; display: flex; flex-direction: column; max-height: 90vh;">
+     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-shrink:0;">
+      <h3 style="font-size:18px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px;"><i data-lucide="calendar-plus" style="width:20px;height:20px;color:var(--lila);"></i> Planifica tus sesiones</h3><button onclick="closeScheduleModal()" style="background:none;border:none;color:var(--white);cursor:pointer;padding:4px;"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+     </div><!-- Content wrapper with scroll -->
+     <div style="overflow-y: auto; flex: 1; margin-bottom: 20px; padding-right: 8px;">
+      <!-- Seleccionar días -->
+      <div style="margin-bottom:20px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Días de la semana actual</label>
+       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"><button onclick="toggleDay('Lunes')" class="day-btn" data-day="Lunes" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Lunes</button> <button onclick="toggleDay('Martes')" class="day-btn" data-day="Martes" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Martes</button> <button onclick="toggleDay('Miércoles')" class="day-btn" data-day="Miércoles" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Miércoles</button> <button onclick="toggleDay('Jueves')" class="day-btn" data-day="Jueves" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Jueves</button> <button onclick="toggleDay('Viernes')" class="day-btn" data-day="Viernes" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Viernes</button> <button onclick="toggleDay('Sábado')" class="day-btn" data-day="Sábado" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Sábado</button> <button onclick="toggleDay('Domingo')" class="day-btn" data-day="Domingo" style="padding:10px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;">Domingo</button>
+       </div>
+      </div><!-- Hora de inicio -->
+      <div style="margin-bottom:20px;"><label for="startTime" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Hora de inicio</label> <select id="startTime" style="width:100%;padding:12px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:#3a1a5c;color:var(--white);font-size:14px;font-family:inherit;cursor:pointer;"></select>
+      </div><!-- Nombre de la sesión -->
+      <div style="margin-bottom:20px;"><label for="sessionName" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Nombre de la sesión</label>
+       <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input type="text" id="sessionName" placeholder="Ej: Sesiones de estudio" style="flex:1;padding:12px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);font-size:14px;font-family:inherit;"> <button onclick="addSchedule()" style="padding:12px 16px;border-radius:8px;border:none;background:linear-gradient(135deg, #b48eff, #6c5ce7);color:white;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;white-space:nowrap;">Aceptar</button>
+       </div>
+       <div id="sessionNameDisplay" style="font-size:12px;color:var(--lila);padding:8px 12px;border-radius:6px;background:rgba(180,142,255,0.08);min-height:20px;"></div>
+      </div><!-- Lista de horarios guardados -->
+      <div style="margin-bottom:20px;"><label style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Sesiones guardadas</label>
+       <div id="scheduleList" style="min-height:40px;"></div>
+      </div>
+     </div><!-- Botones (fixed at bottom) -->
+     <div style="display:flex;gap:10px;flex-wrap:wrap;flex-shrink:0;border-top:1px solid rgba(180,142,255,0.15);padding-top:16px;"><button onclick="openCongratulationsModal()" style="flex:1;min-width:100px;padding:12px;border-radius:8px;border:none;background:linear-gradient(135deg, #b48eff, #6c5ce7);color:white;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;">Listo</button>
+     </div>
+    </div>
+   </div><!-- Notification Toast -->
+   <div id="notificationToast" style="position:fixed;bottom:24px;right:24px;background:rgba(0,0,0,0.9);border:1px solid rgba(180,142,255,0.3);border-radius:12px;padding:16px 20px;color:var(--white);font-size:13px;z-index:100;opacity:0;transform:translateY(120px);transition:all 0.3s;pointer-events:none;max-width:300px;"></div><!-- Congratulations Modal -->
+   <div class="modal-overlay" id="congratulationsModal" onclick="if(event.target===this)closeCongratulationsModal()">
+    <div class="modal-content" style="text-align:center;">
+     <div style="font-size:64px;margin-bottom:20px;animation:bounce 1s ease-in-out infinite;">
+      🎉
+     </div>
+     <h3 style="font-size:18px;font-weight:700;margin:0 0 12px 0;color:var(--lila);">Felicidades por tu esfuerzo</h3>
+     <p style="font-size:14px;color:var(--white);margin:0 0 20px 0;line-height:1.5;">¡Tu compromiso para avanzar más en tu preparación esta semana es admirable!</p><button onclick="closeCongratulationsModal()" style="width:100%;padding:12px;border-radius:8px;border:none;background:linear-gradient(135deg, #b48eff, #6c5ce7);color:white;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;">¡Boost!</button>
+    </div>
+   </div><!-- Participation Modal -->
+   <div class="modal-overlay" id="participationModal" onclick="if(event.target===this)closeParticipationForm()">
+    <div class="modal-content">
+     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 style="font-size:18px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px;"><i data-lucide="upload-cloud" style="width:20px;height:20px;color:var(--lila);"></i> Registra tu participación</h3><button onclick="closeParticipationForm()" style="background:none;border:none;color:var(--white);cursor:pointer;padding:4px;"><i data-lucide="x" style="width:20px;height:20px;"></i></button>
+     </div>
+     <div style="display:flex;flex-direction:column;gap:16px;">
+      <div>
+       <label for="studentName" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Tu nombre</label> <input type="text" id="studentName" placeholder="Ej: Juan Pérez" style="width:100%;padding:12px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);font-size:14px;font-family:inherit;">
+      </div>
+      <div id="challengeInfo" style="padding:12px;border-radius:8px;background:rgba(180,142,255,0.08);border:1px solid rgba(180,142,255,0.2);">
+       <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">
+        RETO:
+       </div>
+       <div id="participationChallengeName" style="font-size:14px;font-weight:600;color:var(--lila);"></div>
+      </div>
+      <div>
+       <label for="submissionUrl" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Link de tu participación</label> <input type="url" id="submissionUrl" placeholder="https://example.com/tu-participacion" style="width:100%;padding:12px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);font-size:14px;font-family:inherit;">
+       <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
+        Puede ser un link a tu trabajo en Drive, portfolio, GitHub, o donde hayas compartido tu participación
+       </div>
+      </div>
+      <div style="display:flex;gap:10px;padding-top:12px;border-top:1px solid rgba(180,142,255,0.15);">
+       <button id="submitParticipationBtn" onclick="submitParticipation()" style="flex:1;padding:12px;border-radius:8px;border:none;background:linear-gradient(135deg, #b48eff, #6c5ce7);color:white;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;"> <i data-lucide="check" style="width:16px;height:16px;"></i> <span>Guardar participación</span> </button> <button onclick="closeParticipationForm()" style="flex:1;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:var(--white);cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;"> Cancelar </button>
+      </div>
+     </div>
+    </div>
+   </div>
+   <script>
+// ===== GOOGLE SHEETS CONFIGURATION =====
+const SHEET_ID = '1cfLa-mtAy1sqlnN4j0EgYfUd4BbtFsGZcNC_JcS4hCc'; // Reemplaza con tu Sheet ID
+const CLIENT_ID = '435905565849-8f6c8q1g2l5q6k4d3r7m8n9p2o1s3t.apps.googleusercontent.com'; // Reemplaza con tu Client ID de OAuth 2.0
+const API_KEY = 'AIzaSyCYwqdFb-9qMWb2z405u0X7wactCJAruqk';   // Reemplaza con tu API Key
+const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+const EVENTS_RANGE = 'Eventos!A2:L'; // Hoja "Eventos" desde fila 2
+const PARTICIPATIONS_RANGE = 'Participaciones!A2:G'; // Hoja "Participaciones" desde fila 2
+
+let tokenClient;
+let gapiInited = false;
+let gisInited = false;
+
+// ===== DATA =====
+let events = []; // Se cargará desde Google Sheets
+
+// ===== GOOGLE SHEETS FUNCTIONS =====
+function gapiLoaded() {
+  gapi.load('client', initializeGapiClient);
+}
+
+async function initializeGapiClient() {
+  gapi.client.init({
+    apiKey: API_KEY,
+    discoveryDocs: [DISCOVERY_DOC],
+  }).then(() => {
+    gapiInited = true;
+    console.log('Google Sheets API inicializada');
+    loadEventsFromSheets();
+  }).catch(error => {
+    console.error('Error inicializando Google Sheets API:', error);
+    loadFallbackEvents();
+  });
+}
+
+function gisLoaded() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: '', // defined later
+  });
+  gisInited = true;
+}
+
+async function loadEventsFromSheets() {
+  try {
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: EVENTS_RANGE,
+    });
+    
+    const rows = response.result.values;
+    events = rows.map(row => ({
+      type: row[0] || '',
+      title: row[1] || '',
+      date: row[2] || '',
+      startTime: row[3] || '',
+      endTime: row[4] || '',
+      speaker: row[5] || '',
+      description: row[6] || '',
+      zoomLink: row[7] || '',
+      portadaLink: row[8] || '',
+      unlockTime: row[9] || null,
+      locked: row[10] === 'true',
+      emoji: row[11] || ''
+    }));
+    
+    console.log('Eventos cargados desde Google Sheets:', events.length);
+    renderCalendar();
+    updateCountdowns();
+  } catch (error) {
+    console.error('Error cargando eventos desde Google Sheets:', error);
+    loadFallbackEvents();
+  }
+}
+
+async function saveParticipationToSheets(data) {
+  try {
+    // Obtener token de acceso
+    if (!gapiInited || !gisInited) {
+      throw new Error('Google Sheets API no está inicializada');
+    }
+
+    // Solicitar token si no existe
+    if (!gapi.auth.getToken()) {
+      await new Promise((resolve, reject) => {
+        tokenClient.callback = (response) => {
+          if (response.error) {
+            reject(response.error);
+          } else {
+            resolve(response);
+          }
+        };
+        tokenClient.requestAccessToken();
+      });
+    }
+
+    const values = [
+      [
+        data.student_name,
+        data.challenge_title,
+        data.challenge_date,
+        data.submission_url,
+        data.participation_date,
+        data.country,
+        data.mexico_time
+      ]
+    ];
+    
+    const response = await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: PARTICIPATIONS_RANGE,
+      valueInputOption: 'USER_ENTERED',
+      resource: {
+        values: values
+      }
+    });
+    
+    console.log('Participación guardada en Google Sheets:', response);
+    return { isOk: true };
+  } catch (error) {
+    console.error('Error guardando participación:', error);
+    return { isOk: false, error: { message: error.message } };
+  }
+}
+
+function loadFallbackEvents() {
+  // Datos de fallback si Google Sheets falla
+  events = [
+    { type:"class", title:"Viczael - Cómo crear tu primer curso digital", date:"2026-04-09", startTime:"19:00", endTime:"20:30", speaker:"Viczael", description:"Aprende cómo crear y lanzar tu primer curso digital exitoso.", zoomLink:"https://us06web.zoom.us/j/89755709944?pwd=betjwyemd09CKaMqfbxa1OTiSeHatq.1", portadaLink:"https://drive.google.com/thumbnail?id=1UTSR7ewbBgF9E6T5kEcBZmSidgz4tCXr&sz=w1000", unlockTime:null, locked:false, emoji:"" },
+    { type:"class", title:"Cristian - Cómo vender más con Facebook Ads", date:"2026-04-16", startTime:"19:00", endTime:"20:30", speaker:"Cristian", description:"Domina Facebook Ads y aumenta tus ventas de forma exponencial.", zoomLink:"https://us06web.zoom.us/j/81303959763?pwd=EKh2TFp9KwKoElijYYaisl2rG1Q02A.1", portadaLink:"https://drive.google.com/thumbnail?id=1HLfDrjh_K6CGIWQpHRUx4Yt5c5TYYg3S&sz=w1000", unlockTime:null, locked:false, emoji:"" },
+    { type:"class", title:"Melissa Arria - Cómo crear y vender un Ebook", date:"2026-04-28", startTime:"19:00", endTime:"20:30", speaker:"Melissa Arria", description:"Los pasos clave para crear, publicar y vender tu ebook de forma profesional.", zoomLink:"https://us06web.zoom.us/j/88524274466?pwd=qxdpqh7l2JSIZCzGzlpJCx5JEnMLMz.1", portadaLink:"https://drive.google.com/thumbnail?id=1z8ucPG-A_RspZ-gwQGrPDlBZAZ27hJ8L&sz=w1000", unlockTime:null, locked:false, emoji:"" },
+    { type:"class", title:"Fer Anzures - Cómo empezar a ser speaker", date:"2026-04-30", startTime:"19:00", endTime:"20:30", speaker:"Fer Anzures", description:"Descubre cómo posicionarte como speaker y monetizar tu conocimiento.", zoomLink:"https://us06web.zoom.us/j/85767507803?pwd=Nf9Kc2A52vzIivu9rxsUszvX1rIHLd.1", portadaLink:"https://drive.google.com/thumbnail?id=1XI6yEniXhU5A20XGCd-3R6PtbSF3kbPj&sz=w1000", unlockTime:null, locked:false, emoji:"" },
+    { type:"challenge", title:"Reto #1 - Comparte una foto", date:"2026-04-07", unlockTime:null, locked:false, description:"Reto finalizado", emoji:"" },
+    { type:"challenge", title:"Reto #2", date:"2026-04-16", unlockTime:null, locked:false, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
+    { type:"challenge", title:"Reto #3", date:"2026-04-22", unlockTime:null, locked:true, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
+    { type:"challenge", title:"Reto #4", date:"2026-04-27", unlockTime:null, locked:true, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" }
+  ];
+  renderCalendar();
+  updateCountdowns();
+}
+
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+let currentYear = 2026, currentMonth = 3; // April 2026
+
+// ===== SCHEDULE MODAL STATE =====
+let selectedDays = new Set();
+let savedSchedules = [];
+let schedulesSavedToCalendar = new Set();
+
+// Obtener la semana actual (lunes a domingo)
+function getCurrentWeekDates() {
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  const monday = new Date(today.setDate(diff));
+  
+  const weekDates = {};
+  const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + i);
+    weekDates[dayNames[i]] = date;
+  }
+  
+  return weekDates;
+}
+
+function updateWeekSummary() {
+  // This function is no longer needed since dates are now displayed on buttons
+}
+
+function openScheduleModal() {
+  selectedDays.clear();
+  document.getElementById('sessionName').value = 'Sesión de estudio CreatorsLab';
+  updateSessionNameDisplay();
+  
+  const startTimeSelect = document.getElementById('startTime');
+  startTimeSelect.innerHTML = '';
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const option = document.createElement('option');
+      option.value = time;
+      option.textContent = time;
+      startTimeSelect.appendChild(option);
+    }
+  }
+  startTimeSelect.value = '14:00';
+  
+  const weekDates = getCurrentWeekDates();
+  const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    const dayName = btn.dataset.day;
+    const date = weekDates[dayName];
+    const dateStr = date.toLocaleDateString('es', { month: 'short', day: 'numeric' });
+    btn.textContent = `${dayName}\n${dateStr}`;
+    btn.style.background = 'rgba(180,142,255,0.05)';
+    btn.style.border = '1px solid rgba(180,142,255,0.3)';
+    btn.style.color = 'var(--white)';
+    btn.style.whiteSpace = 'normal';
+    btn.style.lineHeight = '1.3';
+  });
+  
+  updateWeekSummary();
+  renderScheduleList();
+  document.getElementById('scheduleModal').classList.add('active');
+  lucide.createIcons();
+}
+
+function closeScheduleModal() {
+  document.getElementById('scheduleModal').classList.remove('active');
+}
+
+function openCongratulationsModal() {
+  document.getElementById('scheduleModal').classList.remove('active');
+  document.getElementById('congratulationsModal').classList.add('active');
+}
+
+function closeCongratulationsModal() {
+  document.getElementById('congratulationsModal').classList.remove('active');
+}
+
+function openParticipationForm(challengeTitle, challengeDate) {
+  document.getElementById('participationChallengeName').textContent = challengeTitle;
+  document.getElementById('studentName').value = '';
+  document.getElementById('submissionUrl').value = '';
+  window.currentChallenge = { title: challengeTitle, date: challengeDate };
+  document.getElementById('participationModal').classList.add('active');
+  lucide.createIcons();
+}
+
+function closeParticipationForm() {
+  document.getElementById('participationModal').classList.remove('active');
+}
+
+// Get user's country from geolocation API
+async function getUserCountry() {
+  try {
+    const response = await fetch('https://ipapi.co/json/');
+    if (response.ok) {
+      const data = await response.json();
+      return data.country_name || 'Desconocido';
+    }
+  } catch (e) {
+    console.error('Error fetching country:', e);
+  }
+  return 'Desconocido';
+}
+
+// Convert UTC to Mexico City time (CST/CDT)
+function getTimeInMexicoCity() {
+  const now = new Date();
+  // Mexico City is UTC-6 (CST) or UTC-5 (CDT)
+  const mexicoTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+  
+  const year = mexicoTime.getFullYear();
+  const month = String(mexicoTime.getMonth() + 1).padStart(2, '0');
+  const day = String(mexicoTime.getDate()).padStart(2, '0');
+  const hours = String(mexicoTime.getHours()).padStart(2, '0');
+  const minutes = String(mexicoTime.getMinutes()).padStart(2, '0');
+  const seconds = String(mexicoTime.getSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+async function submitParticipation() {
+  const studentName = document.getElementById('studentName').value.trim();
+  const submissionUrl = document.getElementById('submissionUrl').value.trim();
+  const submitBtn = document.getElementById('submitParticipationBtn');
+
+  if (!studentName) {
+    showNotification('Por favor ingresa tu nombre');
+    return;
+  }
+
+  if (!submissionUrl) {
+    showNotification('Por favor ingresa el link de tu participación');
+    return;
+  }
+
+  try {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.6';
+    
+    // Get country and Mexico City time
+    const country = await getUserCountry();
+    const mexicoTime = getTimeInMexicoCity();
+    
+    const participationData = {
+      student_name: studentName,
+      challenge_title: window.currentChallenge.title,
+      challenge_date: window.currentChallenge.date,
+      submission_url: submissionUrl,
+      participation_date: new Date().toISOString(),
+      country: country,
+      mexico_time: mexicoTime
+    };
+    
+    const result = await saveParticipationToSheets(participationData);
+
+    if (result.isOk) {
+      showNotification('¡Participación registrada exitosamente!');
+      closeParticipationForm();
+    } else {
+      showNotification('Error al guardar: ' + result.error.message);
+    }
+  } catch (error) {
+    showNotification('Error: ' + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.style.opacity = '1';
+  }
+}
+
+function toggleDay(day) {
+  const btn = document.querySelector(`[data-day="${day}"]`);
+  if (selectedDays.has(day)) {
+    selectedDays.delete(day);
+    btn.style.background = 'rgba(180,142,255,0.05)';
+    btn.style.border = '1px solid rgba(180,142,255,0.3)';
+    btn.style.color = 'var(--white)';
+  } else {
+    selectedDays.add(day);
+    btn.style.background = 'rgba(99, 102, 241, 0.3)';
+    btn.style.border = '1px solid #6366f1';
+    btn.style.color = '#a5b4fc';
+  }
+  updateSessionNameDisplay();
+}
+
+function renderScheduleList() {
+  const listContainer = document.getElementById('scheduleList');
+  
+  if (savedSchedules.length === 0) {
+    listContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;">No hay sesiones guardadas aún</div>';
+    return;
+  }
+  
+  listContainer.innerHTML = savedSchedules.map((schedule, index) => {
+    const scheduleId = `${schedule.sessionName}-${schedule.days.join(',')}-${schedule.startTime}`;
+    const isSaved = schedulesSavedToCalendar.has(scheduleId);
+    
+    return `
+    <div class="schedule-item">
+      <div>
+        <div style="font-weight:600;color:var(--lila);margin-bottom:4px;font-size:13px;">${schedule.sessionName}</div>
+        <div style="font-size:12px;color:var(--text-dim);">${schedule.days.join(', ')} a las ${schedule.startTime}</div>
+        ${isSaved ? '<div style="font-size:11px;color:#4caf50;margin-top:6px;display:flex;align-items:center;gap:4px;"><i data-lucide="check-circle-2" style="width:14px;height:14px;"></i><span>Guardado en Google Calendar</span></div>' : ''}
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="addScheduleToCalendar(${index})" class="delete-btn" style="background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.3);color:#6366f1;${isSaved ? 'opacity:0.5;cursor:not-allowed;' : ''}" title="${isSaved ? 'Ya guardado en Google Calendar' : 'Guardar en Google Calendar'}">
+          <i data-lucide="${isSaved ? 'check' : 'calendar-plus'}" style="width:14px;height:14px;"></i>
+        </button>
+        <button onclick="deleteSchedule(${index})" class="delete-btn" title="Eliminar">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+    </div>
+  `}).join('');
+  
+  lucide.createIcons();
+}
+
+function updateSessionNameDisplay() {
+  const nameInput = document.getElementById('sessionName');
+  const displayDiv = document.getElementById('sessionNameDisplay');
+  
+  if (displayDiv) {
+    if (selectedDays.size === 0) {
+      displayDiv.textContent = '';
+    } else {
+      const dayList = Array.from(selectedDays).sort((a, b) => {
+        const dayOrder = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        return dayOrder.indexOf(a) - dayOrder.indexOf(b);
+      }).join(', ');
+      displayDiv.textContent = `${nameInput.value || 'Sesión de estudio CreatorsLab'} - ${dayList}`;
+    }
+  }
+}
+
+function deleteSchedule(index) {
+  savedSchedules.splice(index, 1);
+  renderScheduleList();
+}
+
+function addSchedule() {
+  const sessionName = document.getElementById('sessionName').value.trim();
+  const startTime = document.getElementById('startTime').value;
+  
+  if (selectedDays.size === 0) {
+    showNotification('⚠️ Selecciona al menos un día');
+    return;
+  }
+  
+  if (!sessionName) {
+    showNotification('⚠️ Ingresa un nombre para la sesión');
+    return;
+  }
+  
+  const newSchedule = {
+    sessionName: sessionName,
+    days: Array.from(selectedDays).sort((a, b) => {
+      const dayOrder = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      return dayOrder.indexOf(a) - dayOrder.indexOf(b);
+    }),
+    startTime: startTime
+  };
+  
+  savedSchedules.push(newSchedule);
+  selectedDays.clear();
+  document.getElementById('sessionName').value = 'Sesión de estudio CreatorsLab';
+  
+  document.querySelectorAll('.day-btn').forEach(btn => {
+    btn.style.background = 'rgba(180,142,255,0.05)';
+    btn.style.border = '1px solid rgba(180,142,255,0.3)';
+    btn.style.color = 'var(--white)';
+  });
+  
+  updateSessionNameDisplay();
+  renderScheduleList();
+  showNotification('✅ Sesión agregada');
+}
+
+function showNotification(message) {
+  const toast = document.getElementById('notificationToast');
+  toast.textContent = message;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateY(0)';
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(120px)';
+  }, 3000);
+}
+
+function generateCalendarLink() {
+  if (savedSchedules.length === 0) {
+    showNotification('⚠️ Agrega al menos una sesión');
+    return;
+  }
+
+  const weekDates = getCurrentWeekDates();
+  let eventCount = 0;
+
+  // Recolectar todos los URLs primero
+  const urlsToOpen = [];
+  
+  savedSchedules.forEach(schedule => {
+    schedule.days.forEach(dayName => {
+      const date = weekDates[dayName];
+      const [hours, minutes] = schedule.startTime.split(':');
+      
+      const eventDate = new Date(date);
+      eventDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      const endTime = new Date(eventDate);
+      endTime.setHours(endTime.getHours() + 1);
+      
+      const startISO = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      const endISO = endTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+      
+      let calendarUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
+      calendarUrl += `&text=${encodeURIComponent(schedule.sessionName)}`;
+      calendarUrl += `&dates=${startISO}/${endISO}`;
+      calendarUrl += `&details=${encodeURIComponent(`${schedule.sessionName} - ${dayName}`)}`;
+      
+      urlsToOpen.push(calendarUrl);
+      eventCount++;
+    });
+  });
+
+  // Mostrar notificación de que se están abriendo
+  showNotification(`⏳ Abriendo ${eventCount} evento(s)...`);
+
+  // Abrir cada URL con delay de 1500ms entre ellas (más tiempo = menos bloqueos)
+  let delayMs = 300; // Delay inicial para el primer popup
+  
+  urlsToOpen.forEach((url, index) => {
+    setTimeout(() => {
+      window.open(url, '_blank');
+      
+      // Mostrar feedback después de abrir cada uno
+      if (index === urlsToOpen.length - 1) {
+        setTimeout(() => {
+          showNotification(`✅ Se abrieron ${eventCount} evento(s) en Google Calendar`);
+        }, 300);
+      }
+    }, delayMs);
+    
+    delayMs += 1500; // 1500ms entre cada popup (aumentado de 800ms)
+  });
+
+  // Cerrar modal después de un tiempo
+  setTimeout(() => closeScheduleModal(), delayMs + 500);
+}
+
+function addScheduleToCalendar(scheduleIndex) {
+  const schedule = savedSchedules[scheduleIndex];
+  const weekDates = getCurrentWeekDates();
+  let eventCount = 0;
+  const urlsToOpen = [];
+
+  schedule.days.forEach(dayName => {
+    const date = weekDates[dayName];
+    const [hours, minutes] = schedule.startTime.split(':');
+    
+    const eventDate = new Date(date);
+    eventDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    const endTime = new Date(eventDate);
+    endTime.setHours(endTime.getHours() + 1);
+    
+    const startISO = eventDate.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const endISO = endTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    
+    let calendarUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
+    calendarUrl += `&text=${encodeURIComponent(schedule.sessionName)}`;
+    calendarUrl += `&dates=${startISO}/${endISO}`;
+    calendarUrl += `&details=${encodeURIComponent(`${schedule.sessionName} - ${dayName}`)}`;
+    
+    urlsToOpen.push(calendarUrl);
+    eventCount++;
+  });
+
+  showNotification(`⏳ Abriendo ${eventCount} evento(s)...`);
+
+  let delayMs = 300;
+  urlsToOpen.forEach((url, index) => {
+    setTimeout(() => {
+      window.open(url, '_blank');
+      
+      if (index === urlsToOpen.length - 1) {
+        setTimeout(() => {
+          // Marcar como guardado
+          const scheduleId = `${schedule.sessionName}-${schedule.days.join(',')}-${schedule.startTime}`;
+          schedulesSavedToCalendar.add(scheduleId);
+          renderScheduleList();
+          showNotification(`✅ Se abrieron ${eventCount} evento(s) en Google Calendar`);
+        }, 300);
+      }
+    }, delayMs);
+    
+    delayMs += 1500;
+  });
+}
+
+// ===== CALENDAR =====
+function getEventsForDay(y, m, d) {
+  const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const result = [];
+  const nowUser = new Date();
+  
+  events.forEach(ev => {
+    if (ev.type === 'class' && ev.date === ds) {
+      result.push({ ...ev, tag: 'Clase', tagClass: 'tag-class', eventType: 'class' });
+    } else if (ev.type === 'challenge' && ev.date === ds) {
+      // Challenge is 5 PM on the scheduled date to 11:59 PM next day, in USER'S LOCAL TIMEZONE
+      const [evYear, evMonth, evDay] = ev.date.split('-').map(Number);
+      const challengeStart = new Date(evYear, evMonth - 1, evDay, 17, 0, 0, 0); // 5 PM
+      const challengeEnd = new Date(evYear, evMonth - 1, evDay + 1, 23, 59, 59, 999); // 11:59 PM next day
+      
+      const isActive = nowUser >= challengeStart && nowUser <= challengeEnd;
+      const hasExpired = nowUser > challengeEnd;
+      
+      result.push({ 
+        ...ev, 
+        tag: hasExpired ? '✅ Finalizado' : (isActive ? '🔥 Reto' : '⏳ Próximo'),
+        tagClass: hasExpired ? 'tag-locked' : (isActive ? 'tag-challenge' : 'tag-locked'), 
+        eventType: 'challenge',
+        isActive: isActive,
+        hasExpired: hasExpired
+      });
+    }
+  });
+  return result;
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  document.getElementById('monthLabel').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const offset = (firstDay === 0 ? 6 : firstDay - 1);
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const today = new Date();
+
+  for (let i = 0; i < offset; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'day-cell';
+    empty.style.opacity = '0.15';
+    grid.appendChild(empty);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    const evts = getEventsForDay(currentYear, currentMonth, d);
+    const isToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === d;
+    const num = document.createElement('span');
+    num.textContent = d;
+    num.style.cssText = 'font-size:13px;font-weight:' + (isToday ? '700' : '500');
+    cell.appendChild(num);
+
+    if (evts.length > 0) {
+      cell.classList.add('has-event');
+      
+      // Determinar si tiene clases o retos
+      const hasClass = evts.some(e => e.eventType === 'class');
+      const hasChallenge = evts.some(e => e.eventType === 'challenge');
+      
+      if (hasClass) {
+        cell.classList.add('has-class');
+        if (isToday) cell.classList.add('today');
+      } else if (hasChallenge) {
+        cell.classList.add('has-challenge');
+        if (isToday) cell.classList.add('today');
+      }
+    } else if (isToday) {
+      // Solo mostrar "Hoy" si NO hay eventos
+      cell.classList.add('today');
+      const todayTag = document.createElement('span');
+      todayTag.className = 'tag';
+      todayTag.textContent = 'Hoy';
+      todayTag.style.cssText = 'background: var(--lila); color: #1a0033; font-size: 7px; padding: 1px 4px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; line-height: 1.3; margin-top: 1px;';
+      cell.appendChild(todayTag);
+    }
+
+    if (evts.length > 0) {
+      cell.classList.add('has-event');
+      
+      evts.slice(0, 2).forEach(ev => {
+        const tag = document.createElement('span');
+        tag.className = `tag ${ev.tagClass}`;
+        
+        // Si es un reto (desafío), usar etiqueta blanca con texto rojo
+        if (ev.eventType === 'challenge') {
+          tag.className = 'tag tag-challenge-white';
+        }
+        
+        tag.textContent = ev.tag;
+        cell.appendChild(tag);
+      });
+      cell.onclick = () => openModal(evts);
+    }
+    grid.appendChild(cell);
+  }
+  updateDashboard();
+}
+
+// ===== MODAL =====
+function openModal(evts) {
+  const modal = document.getElementById('modal');
+  const title = document.getElementById('modalTitle');
+  const body = document.getElementById('modalBody');
+  title.textContent = evts.length > 1 ? `${evts.length} Eventos` : evts[0].title;
+  body.innerHTML = evts.map(ev => {
+    if (ev.type === 'challenge') {
+      const now = new Date();
+      const [eYear, eMonth, eDay] = ev.date.split('-').map(Number);
+      const challengeStart = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM en hora local del usuario
+      const challengeEnd = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM día siguiente
+      
+      const isActive = now >= challengeStart && now <= challengeEnd;
+      const hasExpired = now > challengeEnd;
+      
+      let statusBadge = '', statusColor = '';
+      
+      if (hasExpired) {
+        statusBadge = '✅ Finalizado';
+        statusColor = 'rgba(76, 175, 80, 0.6)';
+      } else if (isActive) {
+        statusBadge = '🔥 En curso';
+        statusColor = 'rgba(255, 152, 0, 0.6)';
+      } else {
+        statusBadge = '⏱️ Próximamente';
+        statusColor = 'rgba(100, 150, 255, 0.6)';
+      }
+      
+      return `<div class="glass-card-sm" style="padding:14px;margin-bottom:8px;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="font-size:14px;">${ev.emoji}</span>
+          <span style="font-size:15px;font-weight:600;">${ev.title}</span>
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);white-space:pre-wrap;line-height:1.5;flex:1;">${ev.description}</div>
+        <div style="margin-top:10px;display:flex;justify-content:flex-end;margin-bottom:10px;">
+          <span style="font-size:10px;padding:4px 8px;border-radius:6px;background:${statusColor};color:white;font-weight:700;">${statusBadge}</span>
+        </div>
+        ${(isActive && !hasExpired) ? `<button onclick="openParticipationForm('${ev.title}', '${ev.date}')" style="width:100%;padding:10px;border-radius:8px;border:none;background:linear-gradient(135deg, #b48eff, #6c5ce7);color:white;cursor:pointer;font-size:12px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i data-lucide="upload-cloud" style="width:14px;height:14px;"></i>
+          <span>Registra tu participación</span>
+        </button>` : (hasExpired) ? `<div style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,87,87,0.3);background:rgba(255,87,87,0.1);color:#ff5757;cursor:not-allowed;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;">
+          <i data-lucide="lock" style="width:14px;height:14px;"></i>
+          <span>Registro cerrado</span>
+        </div>` : ''}
+      </div>`;
+    } else {
+      const now = new Date();
+      const classDate = parseLocalDateTime(ev.date, ev.startTime);
+      const endDate = parseLocalDateTime(ev.date, ev.endTime);
+      let statusText = '', statusColor = '';
+      
+      if (now > endDate) {
+        statusText = '✅ Finalizada';
+        statusColor = 'rgba(76, 175, 80, 0.6)';
+      } else if (now < classDate) {
+        statusText = '⏱️ Faltan...';
+        statusColor = 'rgba(255, 152, 0, 0.6)';
+      } else {
+        statusText = '🔴 En vivo';
+        statusColor = 'rgba(255, 87, 87, 0.6)';
+      }
+      
+      const color = 'var(--lila)';
+      return `<div class="glass-card-sm" style="padding:14px;margin-bottom:8px;border: 1px solid rgba(180,142,255,0.3);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:${color};color:#1a0033;font-weight:700;text-transform:uppercase;">Clase</span>
+            <span style="font-size:10px;padding:2px 8px;border-radius:6px;background:${statusColor};color:white;font-weight:700;">${statusText}</span>
+          </div>
+        </div>
+        <div style="border-radius:12px;overflow:hidden;margin-bottom:12px;background:rgba(0,0,0,0.3);height:140px;">
+          <img src="${ev.portadaLink}" alt="Portada" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.background='linear-gradient(135deg, rgba(180,142,255,0.2), rgba(108,92,231,0.2))';this.style.display='none';"/>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;color:var(--lila);">${ev.title}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">👤 ${ev.speaker}</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;">🕐 ${getClassTimeInUserTimezone(ev.date, ev.startTime)} – ${getClassTimeInUserTimezone(ev.date, ev.endTime)}</div>
+        <div data-class-countdown data-class-date="${ev.date}" data-class-time="${ev.startTime}" data-end-time="${ev.endTime}" style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;">
+          <a href="${ev.zoomLink}" target="_blank" rel="noopener noreferrer" data-zoom-link data-class-date="${ev.date}" data-class-time="${ev.startTime}" data-end-time="${ev.endTime}" style="flex:1;padding:8px 12px;background:var(--lila);color:#1a0033;border-radius:8px;text-align:center;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;transition:all 0.2s;opacity:0.5;pointer-events:none;display:flex;align-items:center;justify-content:center;gap:6px;" title="El zoom estará disponible 5 minutos antes de la clase">
+            <i data-lucide="lock" style="width:14px;height:14px;"></i>
+            <span>Zoom</span>
+          </a>
+        </div>
+      </div>`;
+    }
+  }).join('');
+  modal.classList.add('active');
+  lucide.createIcons();
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+// ===== DASHBOARD =====
+function updateDashboard() {
+  let classes = 0, challenges = 0;
+  events.forEach(ev => {
+    if (ev.type === 'class') {
+      const d = new Date(ev.date);
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) classes++;
+    } else if (ev.type === 'challenge') {
+      const d = new Date(ev.date);
+      if (d.getFullYear() === currentYear && d.getMonth() === currentMonth) challenges++;
+    }
+  });
+  document.getElementById('statTotal').textContent = classes + challenges;
+  document.getElementById('statClasses').textContent = classes;
+  document.getElementById('statChallenges').textContent = challenges;
+  renderUpcoming();
+}
+
+function renderUpcoming() {
+  const nowUser = new Date();
+
+  // Find active challenge (one that's currently running)
+  let activeChallenge = null;
+  events.filter(e => e.type === 'challenge').forEach(e => {
+    const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
+    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+    const endDate = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day
+    
+    if (nowUser >= startDate && nowUser <= endDate) {
+      activeChallenge = e;
+    }
+  });
+  
+  // Find next challenge (first challenge after now)
+  let nextChallenge = null, nextChallengeDiff = Infinity;
+  events.filter(e => e.type === 'challenge').forEach(e => {
+    const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
+    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+    const diff = startDate - nowUser;
+    if (diff > 0 && diff < nextChallengeDiff) {
+      nextChallengeDiff = diff;
+      nextChallenge = e;
+    }
+  });
+  
+  const chcEl = document.getElementById('challengeCountdown');
+  const chnEl = document.getElementById('challengeName');
+  const chsEl = document.getElementById('challengeStatus');
+  
+  if (activeChallenge) {
+    const [eYear, eMonth, eDay] = activeChallenge.date.split('-').map(Number);
+    const endDate = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+    const chDay = formatDateLocal(activeChallenge.date);
+    
+    chnEl.textContent = activeChallenge.title;
+    chsEl.textContent = `En curso: ${chDay}`;
+    const diff = endDate - nowUser;
+    const html = buildCountdownHTML(diff);
+    chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Finaliza pronto!</div>';
+  } else if (nextChallenge) {
+    const nextChDay = formatDateLocal(nextChallenge.date);
+    
+    chnEl.textContent = nextChallenge.title;
+    chsEl.textContent = `Próximo: ${nextChDay}`;
+    const html = buildCountdownHTML(nextChallengeDiff);
+    chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Viene pronto!</div>';
+  } else {
+    chnEl.textContent = '';
+    chsEl.textContent = 'No hay retos';
+    chcEl.innerHTML = '';
+  }
+}
+
+// ===== TIMEZONE UTILITIES =====
+// All events are stored in CDMX time (America/Mexico_City)
+// We need to convert to user's local timezone for display
+
+function getUserTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+function getUTCTimeFromMexicoTime(year, month, day, hours, minutes) {
+  // Create a date in Mexico City timezone and convert to UTC
+  // This is done by creating a date string in CDMX time and then interpreting it
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+  
+  // Create a formatter that will give us the offset
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  // Create a test date to find the UTC offset
+  const testDate = new Date(dateStr);
+  const parts = formatter.formatToParts(testDate);
+  const testDateStr = parts.map(p => p.value).join('');
+  
+  // Calculate offset by comparing formatted date with actual UTC
+  const offset = new Date(dateStr).getTime() - new Date(testDateStr.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$3/$1/$2 $4:$5:$6')).getTime();
+  
+  // Simpler approach: use the fact that we can create a date in UTC and work backwards
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
+  
+  // Get what time this UTC date represents in Mexico City
+  const formatter2 = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts2 = formatter2.formatToParts(utcDate);
+  const mexYear = parseInt(parts2.find(p => p.type === 'year').value);
+  const mexMonth = parseInt(parts2.find(p => p.type === 'month').value);
+  const mexDay = parseInt(parts2.find(p => p.type === 'day').value);
+  const mexHour = parseInt(parts2.find(p => p.type === 'hour').value);
+  const mexMin = parseInt(parts2.find(p => p.type === 'minute').value);
+  
+  // Adjust until we get the right time
+  const diff = (mexHour - hours) * 60 + (mexMin - minutes);
+  const correctUTC = new Date(utcDate.getTime() - diff * 60 * 1000);
+  
+  return correctUTC;
+}
+
+function getCurrentTimeInMexico() {
+  // Get current time in Mexico City timezone
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  const year = parseInt(parts.find(p => p.type === 'year').value);
+  const month = parseInt(parts.find(p => p.type === 'month').value);
+  const day = parseInt(parts.find(p => p.type === 'day').value);
+  const hour = parseInt(parts.find(p => p.type === 'hour').value);
+  const minute = parseInt(parts.find(p => p.type === 'minute').value);
+  const second = parseInt(parts.find(p => p.type === 'second').value);
+  
+  const mexicoDate = new Date(year, month - 1, day, hour, minute, second);
+  return mexicoDate;
+}
+
+function convertMexicoTimeToUserTime(year, month, day, hours, minutes) {
+  // Convert a time given in Mexico City timezone to user's local timezone
+  const utcDate = getUTCTimeFromMexicoTime(year, month, day, hours, minutes);
+  return utcDate;
+}
+
+function formatMexicoTimeToUserDisplay(dateStr, timeStr) {
+  // dateStr: "YYYY-MM-DD"
+  // timeStr: "HH:MM" (in Mexico City time)
+  // Returns: "HH:MM" (in user's local time)
+  
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, min] = timeStr.split(':').map(Number);
+  
+  const userDate = convertMexicoTimeToUserTime(y, m, d, h, min);
+  
+  const hours = String(userDate.getHours()).padStart(2, '0');
+  const minutes = String(userDate.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+function parseLocalDate(dateStr) {
+  // Parse date string in user's local timezone
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date();
+  date.setFullYear(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function parseLocalDateMexico(dateStr) {
+  // Parse date as midnight in Mexico City timezone
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return convertMexicoTimeToUserTime(y, m, d, 0, 0);
+}
+
+function parseLocalDateTime(dateStr, timeStr) {
+  // Parse a datetime that's in Mexico City timezone and convert to user's timezone
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, min] = timeStr.split(':').map(Number);
+  
+  return convertMexicoTimeToUserTime(y, m, d, h, min);
+}
+
+function getClassTimeInUserTimezone(dateStr, timeStr) {
+  // Returns the class time in the user's local timezone as a formatted string
+  return formatMexicoTimeToUserDisplay(dateStr, timeStr);
+}
+
+function formatDateLocal(dateStr) {
+  const date = parseLocalDate(dateStr);
+  return date.toLocaleDateString('es', { weekday: 'long', day: 'numeric' });
+}
+
+// ===== COUNTDOWNS =====
+function buildCountdownHTML(diff) {
+  if (diff <= 0) return null;
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const unit = (val, label) => `<div style="text-align:center;"><div class="countdown-num" style="color:var(--white);">${val}</div><div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;">${label}</div></div>`;
+  return unit(d, 'días') + unit(h, 'horas') + unit(m, 'min');
+}
+
+function updateCountdowns() {
+  const nowUser = new Date();
+
+  let nextClass = null, nextClassDiff = Infinity;
+  events.filter(e => e.type === 'class').forEach(e => {
+    const d = parseLocalDateTime(e.date, e.startTime);
+    const diff = d - nowUser;
+    if (diff > 0 && diff < nextClassDiff) { nextClassDiff = diff; nextClass = e; }
+  });
+  const ccEl = document.getElementById('classCountdown');
+  const cnEl = document.getElementById('nextClassName');
+  if (nextClass) {
+    cnEl.textContent = nextClass.title;
+    const html = buildCountdownHTML(nextClassDiff);
+    ccEl.innerHTML = html || '<div style="font-size:12px;color:var(--lila);">¡Es ahora!</div>';
+  } else {
+    cnEl.textContent = '';
+    ccEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Sin clases programadas</div>';
+  }
+
+  // Find active challenge
+  let activeChallenge = null;
+  events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
+    const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
+    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+    const endDate = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day
+    
+    if (nowUser >= startDate && nowUser <= endDate) {
+      activeChallenge = e;
+    }
+  });
+  
+  // Find next challenge (first unlocked challenge after now)
+  let nextChallenge = null, nextChallengeDiff = Infinity;
+  events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
+    const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
+    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+    const diff = startDate - nowUser;
+    if (diff > 0 && diff < nextChallengeDiff) {
+      nextChallengeDiff = diff;
+      nextChallenge = e;
+    }
+  });
+  
+  const chcEl = document.getElementById('challengeCountdown');
+  const chnEl = document.getElementById('challengeName');
+  const chsEl = document.getElementById('challengeStatus');
+  
+  if (activeChallenge) {
+    const [eYear, eMonth, eDay] = activeChallenge.date.split('-').map(Number);
+    const endDate = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+    const chDay = formatDateLocal(activeChallenge.date);
+    
+    chnEl.textContent = activeChallenge.title;
+    chsEl.textContent = `En curso: ${chDay}`;
+    const diff = endDate - nowUser;
+    const html = buildCountdownHTML(diff);
+    chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Finaliza pronto!</div>';
+  } else if (nextChallenge) {
+    const nextChDay = formatDateLocal(nextChallenge.date);
+    
+    chnEl.textContent = nextChallenge.title;
+    chsEl.textContent = `Próximo: ${nextChDay}`;
+    const html = buildCountdownHTML(nextChallengeDiff);
+    chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Viene pronto!</div>';
+  } else {
+    chnEl.textContent = '';
+    chsEl.textContent = 'No hay retos';
+    chcEl.innerHTML = '';
+  }
+  
+  updateClassCountdownsInModal();
+}
+
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  renderCalendar();
+}
+
+function updateClassCountdownsInModal() {
+  const nowUser = new Date();
+  const countdownElements = document.querySelectorAll('[data-class-countdown]');
+  countdownElements.forEach(el => {
+    const classDateStr = el.dataset.classDate;
+    const classTimeStr = el.dataset.classTime;
+    const endTimeStr = el.dataset.endTime;
+    
+    const classDate = parseLocalDateTime(classDateStr, classTimeStr);
+    const endDate = parseLocalDateTime(classDateStr, endTimeStr);
+    
+    if (nowUser > endDate) {
+      el.innerHTML = '<div style="font-size:12px;color:rgba(76, 175, 80, 0.8);font-weight:600;">✅ Finalizada</div>';
+    } else if (nowUser < classDate) {
+      const diff = classDate - nowUser;
+      const html = buildCountdownHTML(diff);
+      if (html) {
+        el.innerHTML = html;
+      } else {
+        el.innerHTML = '<div style="font-size:12px;color:var(--amarillo);font-weight:600;">¡Comienza pronto!</div>';
+      }
+    } else {
+      el.innerHTML = '<div style="font-size:12px;color:rgba(255, 87, 87, 0.8);font-weight:600;">🔴 En vivo</div>';
+    }
+  });
+
+  const lockedCountdowns = document.querySelectorAll('[data-locked-countdown]');
+  lockedCountdowns.forEach(el => {
+    const unlockDateStr = el.dataset.unlockDate;
+    const [uYear, uMonth, uDay] = unlockDateStr.split('-').map(Number);
+    const unlockDate = new Date(uYear, uMonth - 1, uDay, 7, 0, 0, 0);
+    
+    const diff = unlockDate - nowUser;
+    
+    if (diff > 0) {
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      
+      const unit = (val, label) => `<div style="text-align:center;"><div style="font-family:'Space Mono',monospace;font-size:16px;font-weight:700;line-height:1;color:var(--lila);">${val}</div><div style="font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.3px;">${label}</div></div>`;
+      el.innerHTML = `${unit(d, 'días')}${unit(h, 'h')}${unit(m, 'm')}${unit(s, 's')}`;
+    } else {
+      el.innerHTML = '<div style="font-size:12px;color:#4caf50;">✅ ¡Se desbloqueó!</div>';
+    }
+  });
+
+  const zoomLinks = document.querySelectorAll('[data-zoom-link]');
+  zoomLinks.forEach(link => {
+    const classDateStr = link.dataset.classDate;
+    const classTimeStr = link.dataset.classTime;
+    const endTimeStr = link.dataset.endTime;
+    
+    const classDate = parseLocalDateTime(classDateStr, classTimeStr);
+    const endDate = parseLocalDateTime(classDateStr, endTimeStr);
+    const fiveMinBefore = new Date(classDate.getTime() - 5 * 60000);
+    
+    const lockIcon = link.querySelector('[data-lucide]');
+    
+    if (nowUser >= fiveMinBefore && nowUser <= endDate) {
+      link.style.opacity = '1';
+      link.style.pointerEvents = 'auto';
+      link.style.cursor = 'pointer';
+      link.title = 'Acceder a Zoom';
+      if (lockIcon) {
+        lockIcon.setAttribute('data-lucide', 'lock-open');
+      }
+    } else {
+      link.style.opacity = '0.5';
+      link.style.pointerEvents = 'none';
+      link.style.cursor = 'not-allowed';
+      link.title = 'El zoom estará disponible 5 minutos antes de la clase';
+      if (lockIcon) {
+        lockIcon.setAttribute('data-lucide', 'lock');
+      }
+    }
+  });
+  lucide.createIcons();
+}
+
+// ===== ELEMENT SDK =====
+const defaultConfig = {
+  academy_name: 'Calendario Creators Lab',
+  dashboard_title: 'Boost Academy',
+  background_color: '#240051',
+  surface_color: '#2d0066',
+  text_color: '#f0eaf8',
+  primary_action_color: '#b48eff',
+  secondary_action_color: '#ffa94d',
+  font_family: 'Outfit',
+  font_size: 16
+};
+
+// ===== GOOGLE SHEETS INITIALIZATION =====
+// Initialize Google Sheets API when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Inicializar Google Sheets API con OAuth 2.0
+  gapiLoaded();
+  gisLoaded();
+});
+
+function applyConfig(config) {
+  const c = { ...defaultConfig, ...config };
+  document.getElementById('academyName').textContent = c.academy_name;
+  document.getElementById('dashboardTitle').textContent = c.dashboard_title;
+
+  const wrapper = document.getElementById('appWrapper');
+  wrapper.style.background = c.background_color;
+  wrapper.style.backgroundImage = `radial-gradient(ellipse at 10% 20%, ${c.primary_action_color}22 0%, transparent 50%), radial-gradient(ellipse at 90% 80%, ${c.primary_action_color}15 0%, transparent 50%)`;
+  wrapper.style.color = c.text_color;
+
+  document.documentElement.style.setProperty('--bg-main', c.background_color);
+  document.documentElement.style.setProperty('--lila', c.primary_action_color);
+  document.documentElement.style.setProperty('--amarillo', c.secondary_action_color);
+  document.documentElement.style.setProperty('--white', c.text_color);
+
+  const font = c.font_family || defaultConfig.font_family;
+  const baseStack = 'sans-serif';
+  document.body.style.fontFamily = `${font}, ${baseStack}`;
+
+  const base = c.font_size || defaultConfig.font_size;
+  document.getElementById('academyName').style.fontSize = `${base * 1.25}px`;
+  document.getElementById('dashboardTitle').style.fontSize = `${base * 0.75}px`;
+  document.getElementById('monthLabel').style.fontSize = `${base * 1.375}px`;
+}
+
+window.elementSdk.init({
+  defaultConfig,
+  onConfigChange: async (config) => { applyConfig(config); },
+  mapToCapabilities: (config) => ({
+    recolorables: [
+      { get: () => config.background_color || defaultConfig.background_color, set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+      { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+      { get: () => config.text_color || defaultConfig.text_color, set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+      { get: () => config.primary_action_color || defaultConfig.primary_action_color, set: (v) => { config.primary_action_color = v; window.elementSdk.setConfig({ primary_action_color: v }); } },
+      { get: () => config.secondary_action_color || defaultConfig.secondary_action_color, set: (v) => { config.secondary_action_color = v; window.elementSdk.setConfig({ secondary_action_color: v }); } },
+    ],
+    borderables: [],
+    fontEditable: {
+      get: () => config.font_family || defaultConfig.font_family,
+      set: (v) => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); }
+    },
+    fontSizeable: {
+      get: () => config.font_size || defaultConfig.font_size,
+      set: (v) => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); }
+    }
+  }),
+  mapToEditPanelValues: (config) => new Map([
+    ['academy_name', config.academy_name || defaultConfig.academy_name],
+    ['dashboard_title', config.dashboard_title || defaultConfig.dashboard_title]
+  ])
+});
+
+// ===== INIT =====
+renderCalendar();
+updateCountdowns();
+setInterval(updateCountdowns, 1000);
+lucide.createIcons();
+</script>
+  </div>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9ed67bbc4162cc79',t:'MTc3NjM3NzA0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
