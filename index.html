@@ -407,7 +407,9 @@ async function saveParticipationToSupabase(data) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const result = await response.json();
+    // Manejar respuesta vacía (return=minimal devuelve vacío)
+    const text = await response.text();
+    const result = text ? JSON.parse(text) : null;
     console.log('Participación guardada en Supabase:', result);
     return { isOk: true, data: result };
     
