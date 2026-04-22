@@ -184,6 +184,31 @@ html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
   .left-panel, .right-panel { width: 100% !important; }
 }
 
+@media (max-width: 600px) {
+  .day-cell {
+    min-height: 40px;
+    padding: 2px 1px;
+  }
+  
+  .tag {
+    font-size: 6px;
+    padding: 1px 3px;
+    margin-top: 1px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .weekday-header {
+    font-size: 10px;
+    padding: 6px 0;
+  }
+  
+  #calGrid {
+    gap: 2px;
+  }
+}
+
 @keyframes bounce {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.1); }
@@ -244,7 +269,7 @@ html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
        <div id="classCountdown" style="display:flex;gap:10px;justify-content:center;"></div>
       </div><!-- Countdown: Challenge -->
       <div class="glass-card" style="padding:18px;">
-       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><i data-lucide="flame" style="width:16px;height:16px;color:var(--amarillo);"></i> <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);">Reto en Curso</span>
+       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;"><i data-lucide="flame" style="width:16px;height:16px;color:var(--amarillo);"></i> <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);">Retos</span>
        </div>
        <div id="challengeStatus" style="font-size:12px;color:var(--fucsia);margin-bottom:4px;"></div>
        <div id="challengeName" style="font-size:14px;font-weight:600;margin-bottom:10px;color:var(--amarillo);"></div>
@@ -455,7 +480,7 @@ function loadFallbackEvents() {
     { type:"class", title:"Fer Anzures - Cómo empezar a ser speaker", date:"2026-04-30", startTime:"19:00", endTime:"20:30", speaker:"Fer Anzures", description:"Descubre cómo posicionarte como speaker y monetizar tu conocimiento.", zoomLink:"https://us06web.zoom.us/j/85767507803?pwd=Nf9Kc2A52vzIivu9rxsUszvX1rIHLd.1", portadaLink:"https://drive.google.com/thumbnail?id=1XI6yEniXhU5A20XGCd-3R6PtbSF3kbPj&sz=w1000", unlockTime:null, locked:false, emoji:"" },
     { type:"challenge", title:"Reto #1 - Comparte una foto", date:"2026-04-07", unlockTime:null, locked:false, description:"Reto finalizado", emoji:"" },
     { type:"challenge", title:"Reto #2", date:"2026-04-17", unlockTime:null, locked:false, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
-    { type:"challenge", title:"Reto #3", date:"2026-04-22", unlockTime:null, locked:true, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
+    { type:"challenge", title:"Reto #3", date:"2026-04-22", unlockTime:null, locked:false, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" },
     { type:"challenge", title:"Reto #4", date:"2026-04-27", unlockTime:null, locked:true, description:"Este reto se desbloqueará pronto. ¡Mantente atento!", emoji:"" }
   ];
   renderCalendar();
@@ -550,7 +575,7 @@ function openParticipationForm(challengeTitle, challengeDate) {
   // Verificar si el reto está activo
   const nowUser = new Date();
   const [eYear, eMonth, eDay] = challengeDate.split('-').map(Number);
-  const challengeStart = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+  const challengeStart = new Date(eYear, eMonth - 1, eDay, 16, 0, 0, 0); // 4 PM
   const challengeEnd = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day
   const isActive = nowUser >= challengeStart && nowUser <= challengeEnd;
   
@@ -966,15 +991,15 @@ function getEventsForDay(y, m, d) {
     } else if (ev.type === 'challenge' && ev.date === ds) {
       // Challenge is 5 PM on the scheduled date to 11:59 PM next day, in USER'S LOCAL TIMEZONE
       const [evYear, evMonth, evDay] = ev.date.split('-').map(Number);
-      const challengeStart = new Date(evYear, evMonth - 1, evDay, 17, 0, 0, 0); // 5 PM
-      const challengeEnd = new Date(evYear, evMonth - 1, evDay + 1, 23, 59, 59, 999); // 11:59 PM next day
+      const challengeStart = new Date(evYear, evMonth - 1, evDay, 16, 0, 0, 0); // 4 PM local time
+      const challengeEnd = new Date(evYear, evMonth - 1, evDay + 1, 23, 59, 59, 999); // 11:59 PM next day local time
       
       const isActive = nowUser >= challengeStart && nowUser <= challengeEnd;
       const hasExpired = nowUser > challengeEnd;
       
       result.push({ 
         ...ev, 
-        tag: hasExpired ? '✅ Finalizado' : (isActive ? '🔥 Reto' : '⏳ Próximo'),
+        tag: hasExpired ? '✅ Fin' : (isActive ? '🔥 Reto' : '⏳ Próximo'),
         tagClass: hasExpired ? 'tag-locked' : (isActive ? 'tag-challenge' : 'tag-locked'), 
         eventType: 'challenge',
         isActive: isActive,
@@ -1068,7 +1093,7 @@ function openModal(evts) {
     if (ev.type === 'challenge') {
       const now = new Date();
       const [eYear, eMonth, eDay] = ev.date.split('-').map(Number);
-      const challengeStart = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM en hora local del usuario
+      const challengeStart = new Date(eYear, eMonth - 1, eDay, 16, 0, 0, 0); // 4 PM en hora local del usuario
       const challengeEnd = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM día siguiente
       
       const isActive = now >= challengeStart && now <= challengeEnd;
@@ -1077,7 +1102,7 @@ function openModal(evts) {
       let statusBadge = '', statusColor = '';
       
       if (hasExpired) {
-        statusBadge = '✅ Finalizado';
+        statusBadge = '✅ Fin';
         statusColor = 'rgba(76, 175, 80, 0.6)';
       } else if (isActive) {
         statusBadge = '🔥 En curso';
@@ -1114,7 +1139,7 @@ function openModal(evts) {
         statusText = '✅ Finalizada';
         statusColor = 'rgba(76, 175, 80, 0.6)';
       } else if (now < classDate) {
-        statusText = '⏱️ Faltan...';
+        statusText = '⏱️ Próxima clase';
         statusColor = 'rgba(255, 152, 0, 0.6)';
       } else {
         statusText = '🔴 En vivo';
@@ -1225,69 +1250,54 @@ function renderUpcoming() {
 }
 
 // ===== TIMEZONE UTILITIES =====
-// All events are stored in CDMX time (America/Mexico_City)
-// We need to convert to user's local timezone for display
+// Simplified: Use user's local timezone for all frontend operations
+// Mexico timezone is only used for database registration
 
 function getUserTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-function getUTCTimeFromMexicoTime(year, month, day, hours, minutes) {
-  // Create a date in Mexico City timezone and convert to UTC
-  // This is done by creating a date string in CDMX time and then interpreting it
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-  
-  // Create a formatter that will give us the offset
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Mexico_City',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-  
-  // Create a test date to find the UTC offset
-  const testDate = new Date(dateStr);
-  const parts = formatter.formatToParts(testDate);
-  const testDateStr = parts.map(p => p.value).join('');
-  
-  // Calculate offset by comparing formatted date with actual UTC
-  const offset = new Date(dateStr).getTime() - new Date(testDateStr.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$3/$1/$2 $4:$5:$6')).getTime();
-  
-  // Simpler approach: use the fact that we can create a date in UTC and work backwards
-  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes, 0));
-  
-  // Get what time this UTC date represents in Mexico City
-  const formatter2 = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Mexico_City',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-  
-  const parts2 = formatter2.formatToParts(utcDate);
-  const mexYear = parseInt(parts2.find(p => p.type === 'year').value);
-  const mexMonth = parseInt(parts2.find(p => p.type === 'month').value);
-  const mexDay = parseInt(parts2.find(p => p.type === 'day').value);
-  const mexHour = parseInt(parts2.find(p => p.type === 'hour').value);
-  const mexMin = parseInt(parts2.find(p => p.type === 'minute').value);
-  
-  // Adjust until we get the right time
-  const diff = (mexHour - hours) * 60 + (mexMin - minutes);
-  const correctUTC = new Date(utcDate.getTime() - diff * 60 * 1000);
-  
-  return correctUTC;
+function parseLocalDate(dateStr) {
+  // Parse date string in user's local timezone
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date();
+  date.setFullYear(y, m - 1, d);
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
+function parseLocalDateTime(dateStr, timeStr) {
+  // Parse datetime from Mexico timezone and convert to user's local timezone
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, min] = timeStr.split(':').map(Number);
+  
+  // Create date in Mexico timezone (UTC-6 or UTC-5 for DST)
+  // Using ISO string with timezone offset
+  const mexicoISO = `${dateStr}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00-06:00`;
+  const mexicoDate = new Date(mexicoISO);
+  
+  return mexicoDate;
+}
+
+function getClassTimeInUserTimezone(dateStr, timeStr) {
+  // Convert Mexico time to user's local timezone for display
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const [h, min] = timeStr.split(':').map(Number);
+  
+  // Create date in Mexico timezone
+  const mexicoISO = `${dateStr}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00-06:00`;
+  const mexicoDate = new Date(mexicoISO);
+  
+  // Format in user's local timezone
+  const localHours = String(mexicoDate.getHours()).padStart(2, '0');
+  const localMinutes = String(mexicoDate.getMinutes()).padStart(2, '0');
+  
+  return `${localHours}:${localMinutes}`;
+}
+
+// Mexico timezone functions - only used for database registration
 function getCurrentTimeInMexico() {
-  // Get current time in Mexico City timezone
+  // Get current time in Mexico City timezone for database storage
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Mexico_City',
@@ -1312,55 +1322,6 @@ function getCurrentTimeInMexico() {
   return mexicoDate;
 }
 
-function convertMexicoTimeToUserTime(year, month, day, hours, minutes) {
-  // Convert a time given in Mexico City timezone to user's local timezone
-  const utcDate = getUTCTimeFromMexicoTime(year, month, day, hours, minutes);
-  return utcDate;
-}
-
-function formatMexicoTimeToUserDisplay(dateStr, timeStr) {
-  // dateStr: "YYYY-MM-DD"
-  // timeStr: "HH:MM" (in Mexico City time)
-  // Returns: "HH:MM" (in user's local time)
-  
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const [h, min] = timeStr.split(':').map(Number);
-  
-  const userDate = convertMexicoTimeToUserTime(y, m, d, h, min);
-  
-  const hours = String(userDate.getHours()).padStart(2, '0');
-  const minutes = String(userDate.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-}
-
-function parseLocalDate(dateStr) {
-  // Parse date string in user's local timezone
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date();
-  date.setFullYear(y, m - 1, d);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function parseLocalDateMexico(dateStr) {
-  // Parse date as midnight in Mexico City timezone
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return convertMexicoTimeToUserTime(y, m, d, 0, 0);
-}
-
-function parseLocalDateTime(dateStr, timeStr) {
-  // Parse a datetime that's in Mexico City timezone and convert to user's timezone
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const [h, min] = timeStr.split(':').map(Number);
-  
-  return convertMexicoTimeToUserTime(y, m, d, h, min);
-}
-
-function getClassTimeInUserTimezone(dateStr, timeStr) {
-  // Returns the class time in the user's local timezone as a formatted string
-  return formatMexicoTimeToUserDisplay(dateStr, timeStr);
-}
-
 function formatDateLocal(dateStr) {
   const date = parseLocalDate(dateStr);
   return date.toLocaleDateString('es', { weekday: 'long', day: 'numeric' });
@@ -1379,30 +1340,61 @@ function buildCountdownHTML(diff) {
 function updateCountdowns() {
   const nowUser = new Date();
 
-  // Update class countdown
-  let nextClass = null, nextClassDiff = Infinity;
-  events.filter(e => e.type === 'class').forEach(e => {
-    const d = parseLocalDateTime(e.date, e.startTime);
-    const diff = d - nowUser;
-    if (diff > 0 && diff < nextClassDiff) { nextClassDiff = diff; nextClass = e; }
-  });
+  // Update class countdown - FIXED LOGIC
   const ccEl = document.getElementById('classCountdown');
   const cnEl = document.getElementById('nextClassName');
-  if (nextClass) {
-    cnEl.textContent = nextClass.title;
-    const html = buildCountdownHTML(nextClassDiff);
-    ccEl.innerHTML = html || '<div style="font-size:12px;color:var(--lila);">¡Es ahora!</div>';
+  
+  // First check if there's an active class
+  let activeClass = null;
+  events.filter(e => e.type === 'class').forEach(e => {
+    const classStart = parseLocalDateTime(e.date, e.startTime);
+    const classEnd = parseLocalDateTime(e.date, e.endTime);
+    
+    if (nowUser >= classStart && nowUser <= classEnd) {
+      activeClass = {
+        ...e,
+        endTime: classEnd,
+        timeRemaining: classEnd - nowUser
+      };
+    }
+  });
+  
+  if (activeClass) {
+    // Show countdown until class ends
+    cnEl.textContent = activeClass.title;
+    const html = buildCountdownHTML(activeClass.timeRemaining);
+    ccEl.innerHTML = `<div style="font-size:11px;color:var(--text-dim);margin-bottom:2px;">Clase termina en:</div>
+      <div style="display:flex;gap:10px;justify-content:center;">
+        ${html || '<div style="font-size:12px;color:var(--lila);">¡Termina pronto!</div>'}
+      </div>`;
   } else {
-    cnEl.textContent = '';
-    ccEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Sin clases programadas</div>';
+    // No active class, show next class countdown
+    let nextClass = null, nextClassDiff = Infinity;
+    events.filter(e => e.type === 'class').forEach(e => {
+      const d = parseLocalDateTime(e.date, e.startTime);
+      const diff = d - nowUser;
+      if (diff > 0 && diff < nextClassDiff) { 
+        nextClassDiff = diff; 
+        nextClass = e; 
+      }
+    });
+    
+    if (nextClass) {
+      cnEl.textContent = nextClass.title;
+      const html = buildCountdownHTML(nextClassDiff);
+      ccEl.innerHTML = html || '<div style="font-size:12px;color:var(--lila);">¡Es ahora!</div>';
+    } else {
+      cnEl.textContent = '';
+      ccEl.innerHTML = '<div style="font-size:12px;color:var(--text-dim);">Sin clases programadas</div>';
+    }
   }
 
   // Find ALL active challenges
   const activeChallenges = [];
   events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
     const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
-    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
-    const endDate = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day
+    const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM local time
+    const endDate = new Date(eYear, eMonth - 1, eDay + 1, 23, 59, 59, 999); // 11:59 PM next day local time
     
     if (nowUser >= startDate && nowUser <= endDate) {
       activeChallenges.push({
@@ -1418,7 +1410,7 @@ function updateCountdowns() {
   if (activeChallenges.length === 0) {
     events.filter(e => e.type === 'challenge' && !e.locked).forEach(e => {
       const [eYear, eMonth, eDay] = e.date.split('-').map(Number);
-      const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM
+      const startDate = new Date(eYear, eMonth - 1, eDay, 17, 0, 0, 0); // 5 PM local time
       const diff = startDate - nowUser;
       if (diff > 0 && diff < nextChallengeDiff) {
         nextChallengeDiff = diff;
@@ -1445,19 +1437,19 @@ function updateCountdowns() {
     });
     
     chnEl.textContent = '';
-    chsEl.textContent = activeChallenges.length === 1 ? 'Reto en curso ¡Queremos ver tu participación!' : `${activeChallenges.length} retos en curso`;
+    chsEl.textContent = activeChallenges.length === 1 ? 'Reto en curso' : `${activeChallenges.length} Retos en curso`;
     chcEl.innerHTML = countdownsHTML;
   } else if (nextChallenge) {
     // Show next challenge countdown
     const nextChDay = formatDateLocal(nextChallenge.date);
     
     chnEl.textContent = nextChallenge.title;
-    chsEl.textContent = `Próximo: ${nextChDay}`;
+    chsEl.textContent = 'Tiempo para el siguiente reto';
     const html = buildCountdownHTML(nextChallengeDiff);
     chcEl.innerHTML = html || '<div style="font-size:12px;color:var(--amarillo);">¡Viene pronto!</div>';
   } else {
     chnEl.textContent = '';
-    chsEl.textContent = 'No hay retos';
+    chsEl.textContent = 'Sin Retos';
     chcEl.innerHTML = '';
   }
   
@@ -1524,12 +1516,14 @@ function updateClassCountdownsInModal() {
     const classTimeStr = link.dataset.classTime;
     const endTimeStr = link.dataset.endTime;
     
+    // Parse class times as user local time (no conversion needed)
     const classDate = parseLocalDateTime(classDateStr, classTimeStr);
     const endDate = parseLocalDateTime(classDateStr, endTimeStr);
     const fiveMinBefore = new Date(classDate.getTime() - 5 * 60000);
     
     const lockIcon = link.querySelector('[data-lucide]');
     
+    // Simple time comparison using user's local time
     if (nowUser >= fiveMinBefore && nowUser <= endDate) {
       link.style.opacity = '1';
       link.style.pointerEvents = 'auto';
