@@ -372,9 +372,23 @@ html, body { height: 100%; margin: 0; font-family: 'Outfit', sans-serif; }
        <div id="participationChallengeName" style="font-size:14px;font-weight:600;color:var(--lila);"></div>
       </div>
       <div>
-       <label for="submissionUrl" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Link de tu participación</label> <input type="url" id="submissionUrl" placeholder="https://example.com/tu-participacion" style="width:100%;padding:12px;border-radius:8px;border:1px solid rgba(180,142,255,0.3);background:rgba(180,142,255,0.05);color:var(--white);font-size:14px;font-family:inherit;">
-       <div style="font-size:11px;color:var(--text-dim);margin-top:6px;">
-        Puede ser un link a tu trabajo en Drive, portfolio, GitHub, o donde hayas compartido tu participación
+       <label for="submissionFile" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);display:block;margin-bottom:8px;">Sube tu imagen de participación</label>
+       <div id="fileUploadArea" style="border:2px dashed rgba(180,142,255,0.3);border-radius:8px;padding:20px;text-align:center;background:rgba(180,142,255,0.05);cursor:pointer;transition:all 0.2s;" onclick="document.getElementById('submissionFile').click()" onmouseover="this.style.background='rgba(180,142,255,0.1)'" onmouseout="this.style.background='rgba(180,142,255,0.05)'">
+        <i data-lucide="upload-cloud" style="width:32px;height:32px;color:var(--lila);margin-bottom:8px;"></i>
+        <div style="font-size:14px;color:var(--white);margin-bottom:4px;">Haz clic para subir tu imagen</div>
+        <div style="font-size:11px;color:var(--text-dim);">Formatos: JPG, PNG, GIF (Máx. 10MB)</div>
+        <input type="file" id="submissionFile" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
+       </div>
+       <div id="filePreview" style="display:none;margin-top:12px;">
+        <div style="font-size:12px;color:var(--lila);margin-bottom:8px;">Archivo seleccionado:</div>
+        <div id="previewContent" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:rgba(180,142,255,0.08);border:1px solid rgba(180,142,255,0.2);">
+        </div>
+       </div>
+       <div id="uploadProgress" style="display:none;margin-top:12px;">
+        <div style="font-size:12px;color:var(--lila);margin-bottom:8px;">Subiendo imagen...</div>
+        <div style="width:100%;height:6px;background:rgba(180,142,255,0.2);border-radius:3px;overflow:hidden;">
+         <div id="progressBar" style="height:100%;background:linear-gradient(90deg, var(--lila), var(--morado));width:0%;transition:width 0.3s;"></div>
+        </div>
        </div>
       </div>
       <div style="display:flex;gap:10px;padding-top:12px;border-top:1px solid rgba(180,142,255,0.15);">
@@ -390,6 +404,111 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // ===== DATA =====
 let events = []; // Se cargará desde Google Sheets
+let selectedFile = null; // Archivo seleccionado para subir
+
+// ===== FILE HANDLING FUNCTIONS =====
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  // Validar tipo de archivo
+  if (!file.type.startsWith('image/')) {
+    showNotification('Por favor selecciona un archivo de imagen (JPG, PNG, GIF)');
+    event.target.value = '';
+    return;
+  }
+
+  // Validar tamaño (10MB máximo)
+  const maxSize = 10 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showNotification('El archivo es demasiado grande. Máximo 10MB');
+    event.target.value = '';
+    return;
+  }
+
+  selectedFile = file;
+  showFilePreview(file);
+}
+
+function showFilePreview(file) {
+  const preview = document.getElementById('filePreview');
+  const previewContent = document.getElementById('previewContent');
+  
+  // Crear vista previa
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    previewContent.innerHTML = `
+      <img src="${e.target.result}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;">
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px;">${file.name}</div>
+        <div style="font-size:11px;color:var(--text-dim);">${formatFileSize(file.size)}</div>
+      </div>
+      <button onclick="removeSelectedFile()" style="background:rgba(255,87,87,0.1);border:1px solid rgba(255,87,87,0.3);color:#ff5757;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,87,87,0.2)'" onmouseout="this.style.background='rgba(255,87,87,0.1)'">
+        <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+      </button>
+    `;
+    preview.style.display = 'block';
+    lucide.createIcons();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeSelectedFile() {
+  selectedFile = null;
+  document.getElementById('submissionFile').value = '';
+  document.getElementById('filePreview').style.display = 'none';
+  document.getElementById('previewContent').innerHTML = '';
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// ===== SUPABASE STORAGE UPLOAD =====
+async function uploadImageToSupabase(file, studentName, challengeTitle) {
+  try {
+    // Generar nombre de archivo único
+    const timestamp = Date.now();
+    const sanitizedName = studentName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const sanitizedNameChallenge = challengeTitle.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const fileName = `participaciones/${sanitizedNameChallenge}/${sanitizedName}_${timestamp}_${file.name}`;
+    
+    console.log('Subiendo archivo:', fileName);
+
+    // Subir archivo a Supabase Storage
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${SUPABASE_URL}/storage/v1/object/participaciones/${fileName}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: file
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error en upload:', errorText);
+      throw new Error(`Error al subir imagen: ${response.status}`);
+    }
+
+    // Obtener URL pública del archivo
+    const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/participaciones/${fileName}`;
+    console.log('Archivo subido exitosamente:', publicUrl);
+    
+    return { success: true, url: publicUrl };
+
+  } catch (error) {
+    console.error('Error subiendo imagen:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 // ===== SUPABASE FUNCTIONS =====
 async function loadEventsFromSupabase() {
@@ -586,8 +705,17 @@ function openParticipationForm(challengeTitle, challengeDate) {
     document.getElementById('participationChallengeName').textContent = challengeTitle;
   }
   
+  // Resetear formulario
   document.getElementById('studentName').value = '';
-  document.getElementById('submissionUrl').value = '';
+  document.getElementById('submissionFile').value = '';
+  selectedFile = null;
+  
+  // Resetear vista previa y progreso
+  document.getElementById('filePreview').style.display = 'none';
+  document.getElementById('previewContent').innerHTML = '';
+  document.getElementById('uploadProgress').style.display = 'none';
+  document.getElementById('progressBar').style.width = '0%';
+  
   window.currentChallenge = { title: challengeTitle, date: challengeDate };
   document.getElementById('participationModal').classList.add('active');
   lucide.createIcons();
@@ -695,7 +823,6 @@ function getTimeInMexicoCity() {
 
 async function submitParticipation() {
   const studentName = document.getElementById('studentName').value.trim();
-  const submissionUrl = document.getElementById('submissionUrl').value.trim();
   const submitBtn = document.getElementById('submitParticipationBtn');
 
   if (!studentName) {
@@ -703,8 +830,8 @@ async function submitParticipation() {
     return;
   }
 
-  if (!submissionUrl) {
-    showNotification('Por favor ingresa el link de tu participación');
+  if (!selectedFile) {
+    showNotification('Por favor selecciona una imagen para subir');
     return;
   }
 
@@ -712,6 +839,29 @@ async function submitParticipation() {
     submitBtn.disabled = true;
     submitBtn.style.opacity = '0.6';
     
+    // Mostrar progreso de subida
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    progressDiv.style.display = 'block';
+    
+    // Simular progreso (ya que fetch no da progreso real para archivos simples)
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 30;
+      if (progress > 90) progress = 90;
+      progressBar.style.width = progress + '%';
+    }, 200);
+
+    // Subir imagen a Supabase Storage
+    const uploadResult = await uploadImageToSupabase(selectedFile, studentName, window.currentChallenge.title);
+    
+    clearInterval(progressInterval);
+    progressBar.style.width = '100%';
+    
+    if (!uploadResult.success) {
+      throw new Error(uploadResult.error);
+    }
+
     // Get country, timezone and Mexico City time
     const locationData = await detectCountryAndTimezone();
     const mexicoTime = getTimeInMexicoCity();
@@ -720,7 +870,7 @@ async function submitParticipation() {
       student_name: studentName,
       challenge_title: window.currentChallenge.title,
       challenge_date: window.currentChallenge.date,
-      submission_url: submissionUrl,
+      submission_url: uploadResult.url, // Usar la URL de la imagen subida
       participation_date: new Date().toISOString(),
       country: locationData.country,
       user_timezone: locationData.timezone,
@@ -744,6 +894,12 @@ async function submitParticipation() {
   } finally {
     submitBtn.disabled = false;
     submitBtn.style.opacity = '1';
+    
+    // Ocultar progreso
+    setTimeout(() => {
+      document.getElementById('uploadProgress').style.display = 'none';
+      document.getElementById('progressBar').style.width = '0%';
+    }, 1000);
   }
 }
 
